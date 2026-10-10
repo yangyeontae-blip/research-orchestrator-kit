@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/research-orchestrator/config.schema.json",
+  "title": "Research Orchestrator agent configuration",
+  "type": "object",
+  "required": ["schema_version", "agents"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "agents": {
+      "type": "object",
+      "required": ["orchestrator", "study", "research", "literature", "video"],
+      "additionalProperties": false,
+      "properties": {
+        "orchestrator": { "$ref": "#/$defs/agent" },
+        "study": { "$ref": "#/$defs/agent" },
+        "research": { "$ref": "#/$defs/agent" },
+        "literature": { "$ref": "#/$defs/agent" },
+        "video": { "$ref": "#/$defs/agent" }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "agent": {
+      "type": "object",
+      "required": ["provider"],
+      "properties": {
+        "provider": { "enum": ["manual", "codex", "claude", "openai_api", "anthropic_api"] },
+        "target": { "type": "string" },
+        "inbox": { "type": "string" },
+        "model": { "type": "string" },
+        "base_url": { "type": "string", "format": "uri" },
+        "max_tokens": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

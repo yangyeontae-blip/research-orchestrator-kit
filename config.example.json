@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "agents": {
+    "orchestrator": {
+      "provider": "manual"
+    },
+    "study": {
+      "provider": "codex",
+      "target": "replace-with-your-study-thread-id"
+    },
+    "research": {
+      "provider": "claude",
+      "inbox": ".research-work/claude/research"
+    },
+    "literature": {
+      "provider": "manual"
+    },
+    "video": {
+      "provider": "manual"
+    }
+  }
+}

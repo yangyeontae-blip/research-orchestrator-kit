@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project_id": "jqi-interview",
+  "workflow_id": null,
+  "title": "가상 지역학습관 멘토의 관계 형성 경험",
+  "idea": "가상 멘토의 관계 형성 경험을 질적 면담으로 탐색한다.",
+  "profile": "jqi",
+  "entry_mode": "direct_plan",
+  "method": "반구조화 면담과 주제분석",
+  "deadline": "2030-10-31",
+  "institution_guidance": "공개 JQI 규정과 별도 제출 지침을 대조한다.",
+  "sensitive_information": true,
+  "apa_paper_type": "not_applicable",
+  "created_at": "2030-01-01T00:00:00.000Z"
+}

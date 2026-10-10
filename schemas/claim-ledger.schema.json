@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Claim evidence ledger",
+  "type": "object",
+  "required": ["schema_version", "project_id", "plan_sha256", "claims", "updated_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "project_id": { "type": "string" },
+    "plan_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "required": ["id", "claim", "plan_location", "literature_ids", "verification_status", "evidence_locations", "notes"],
+      "properties": {
+        "id": { "type": "string" },
+        "claim": { "type": "string", "minLength": 1 },
+        "plan_location": { "type": "string" },
+        "literature_ids": { "type": "array", "items": { "type": "string" } },
+        "verification_status": { "enum": ["original_verified", "parsed_verified", "metadata_only", "unverified"] },
+        "evidence_locations": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

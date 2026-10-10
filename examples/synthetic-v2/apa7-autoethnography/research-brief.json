@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project_id": "apa7-autoethnography",
+  "workflow_id": null,
+  "title": "가상 초임 교사의 온라인 수업 적응 자문화기술지",
+  "idea": "한 가상 연구자의 합성 일지를 통해 온라인 수업 적응 과정의 의미 구성을 탐색한다.",
+  "profile": "apa7",
+  "entry_mode": "direct_plan",
+  "method": "질적 1인 자문화기술지",
+  "deadline": "2030-10-31",
+  "institution_guidance": "합성 대학원 과제 지침",
+  "sensitive_information": false,
+  "apa_paper_type": "student",
+  "created_at": "2030-01-01T00:00:00.000Z"
+}

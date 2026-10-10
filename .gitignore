@@ -1,0 +1,22 @@
+config.local.json
+.research-work/
+workspace/
+downloads/
+generated/
+backups/
+*.lock
+*.tmp
+*.bak
+*.pdf
+*.hwp
+*.hwpx
+*.doc
+*.docx
+node_modules/
+.DS_Store
+Thumbs.db
+*.mp4
+!docs/media/research-orchestrator-kit-v0.2.mp4
+
+# Local video render logs
+docs/video-*-render*.log

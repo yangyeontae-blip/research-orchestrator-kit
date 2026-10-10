@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "id": "apa7",
+  "name": "APA Style 7th edition research proposal profile",
+  "description": "Optional APA Style 7th edition profile for research proposals, with institution-specific instructions taking precedence.",
+  "official_sources": [
+    {
+      "title": "Publication Manual of the American Psychological Association, Seventh Edition",
+      "url": "https://apastyle.apa.org/products/publication-manual-7th-edition",
+      "checked_at": "2026-10-09"
+    },
+    {
+      "title": "APA Style: Paper Format",
+      "url": "https://apastyle.apa.org/style-grammar-guidelines/paper-format",
+      "checked_at": "2026-10-09"
+    },
+    {
+      "title": "APA Style: In-Text Citations",
+      "url": "https://apastyle.apa.org/style-grammar-guidelines/citations",
+      "checked_at": "2026-10-09"
+    },
+    {
+      "title": "APA Style: References",
+      "url": "https://apastyle.apa.org/style-grammar-guidelines/references",
+      "checked_at": "2026-10-09"
+    }
+  ],
+  "legal_scope": {
+    "bundled_manual": false,
+    "bundled_sample_paper": false,
+    "affiliated_with_apa": false,
+    "representation": "Independent, high-level interoperability profile that links to official APA Style sources and paraphrases selected factual requirements.",
+    "redistribution_rule": "Do not add the APA Publication Manual, official sample-paper files, logos, or copied instructional content without an explicit redistribution license from the rights holder.",
+    "third_party_notice": "See THIRD_PARTY_NOTICES.md. The MIT license covers this toolkit, not APA publications or other third-party materials."
+  },
+  "scope": {
+    "style_rules": "APA Style governs scholarly writing, paper presentation, in-text citations, references, tables, figures, reporting, and related ethical guidance.",
+    "proposal_structure": "APA Style does not prescribe one universal research-proposal outline. The proposal sections below are toolkit defaults, not official APA requirements.",
+    "precedence": "The user's assignment brief, institution, department, instructor, supervisor, funder, or publisher requirements override this profile where they differ."
+  },
+  "official_requirements": {
+    "edition": 7,
+    "paper_audience": "Distinguish student papers from professional manuscripts and apply the relevant official guidance.",
+    "paper_format": "Use the official APA Style guidance for page order, title page, font, page header, spacing, margins, alignment, indentation, headings, reference list, and appendices.",
+    "citations": "Use the APA author-date system and clearly distinguish paraphrases from direct quotations.",
+    "references": "Include retrievable works cited in the text, verify each entry against the original publication, and keep in-text citations and the reference list mutually consistent.",
+    "research_reporting": "Choose reporting details appropriate to quantitative, qualitative, or mixed-methods research and do not invent results for a proposal.",
+    "language_and_ethics": "Apply accurate, respectful, bias-free language and appropriate authorship, citation, participant-protection, and research-integrity practices."
+  },
+  "toolkit_proposal_requirements": {
+    "required_sections": [
+      "title and assignment metadata required by the institution",
+      "problem statement, purpose, and research questions or hypotheses",
+      "literature review and, when appropriate, theoretical or conceptual framework",
+      "method: design, participants or data sources, procedures, analysis, quality or validity, and ethics",
+      "anticipated contribution, limitations, and feasible timeline",
+      "APA Style reference list"
+    ],
+    "conditional_sections": [
+      "abstract and keywords when required by the assignment or destination",
+      "budget, dissemination plan, appendices, instruments, and data-management plan when required"
+    ],
+    "proposal_tense": "Describe planned work as proposed or anticipated; do not present projected findings as observed results.",
+    "quality_review": [
+      "assignment and audience requirements are recorded",
+      "research questions align with evidence, design, data, and analysis",
+      "all factual claims and references are traceable to checked sources",
+      "in-text citations and references match in both directions",
+      "student or professional paper formatting choice is explicit",
+      "unknown or institution-specific requirements are marked rather than guessed"
+    ]
+  },
+  "collection_gate": {
+    "human_confirmation": true,
+    "minimum_score_exclusive": null,
+    "minimum_rubric_total": null,
+    "require_hard_checks": true,
+    "note": "The hard-check gate is a toolkit safeguard confirming the APA 7 and assignment review above. It is not an APA acceptance criterion."
+  },
+  "required_artifacts": {
+    "study": ["study_record"],
+    "plan": ["plan", "quality_review", "literature_handoff"],
+    "literature": ["collection_report", "parsed_text"],
+    "review": ["review_report"],
+    "revise": ["plan", "quality_review", "literature_handoff"],
+    "video_storyboard": ["video_storyboard", "video_source_map"],
+    "video_render": ["video_file", "video_manifest"]
+  }
+}

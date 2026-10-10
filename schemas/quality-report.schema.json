@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research-plan quality report",
+  "type": "object",
+  "required": ["schema_version", "project_id", "profile", "plan", "automated", "ai_assessment", "human_assessment", "generated_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "project_id": { "type": "string" },
+    "profile": { "enum": ["apa7", "jqi", "generic"] },
+    "plan": { "$ref": "#/$defs/binding" },
+    "automated": {
+      "type": "object",
+      "required": ["score", "hard_checks_passed", "checks", "limitations"],
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "hard_checks_passed": { "type": "boolean" },
+        "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "ai_assessment": { "type": ["object", "null"] },
+    "human_assessment": { "type": ["object", "null"] },
+    "generated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "label", "passed", "evidence", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "passed": { "type": "boolean" },
+        "evidence": { "type": "string" },
+        "source": { "const": "automated" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

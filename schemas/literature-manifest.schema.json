@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Literature manifest",
+  "type": "object",
+  "required": ["schema_version", "project_id", "searches", "items", "updated_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "project_id": { "type": "string" },
+    "searches": { "type": "array", "items": { "$ref": "#/$defs/search" } },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "search": {
+      "type": "object",
+      "required": ["query", "searched_at", "providers"],
+      "properties": {
+        "query": { "type": "string" },
+        "searched_at": { "type": "string", "format": "date-time" },
+        "providers": { "type": "array", "items": { "enum": ["crossref", "openalex"] } },
+        "result_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "item": {
+      "type": "object",
+      "required": ["id", "title", "authors", "year", "sources", "decision", "reason", "verification"],
+      "properties": {
+        "id": { "type": "string" },
+        "doi": { "type": ["string", "null"] },
+        "title": { "type": "string" },
+        "normalized_title": { "type": "string" },
+        "authors": { "type": "array", "items": { "type": "string" } },
+        "year": { "type": ["integer", "null"] },
+        "venue": { "type": ["string", "null"] },
+        "url": { "type": ["string", "null"], "format": "uri" },
+        "sources": { "type": "array", "items": { "enum": ["crossref", "openalex", "user"] }, "minItems": 1 },
+        "decision": { "enum": ["candidate", "selected", "excluded"] },
+        "reason": { "type": "string" },
+        "verification": { "enum": ["metadata_only", "pdf_ingested", "needs_ocr", "metadata_mismatch", "hwp_ingested", "hwpx_ingested", "document_mismatch"] },
+        "pdf": {
+          "type": "object",
+          "required": ["sha256", "file_name", "external", "page_count", "parsed_path", "page_label_status"],
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "file_name": { "type": "string" },
+            "external": { "type": "boolean" },
+            "page_count": { "type": "integer", "minimum": 1 },
+            "parsed_path": { "type": "string" },
+            "page_label_status": { "enum": ["printed_confirmed", "pdf_page_only"] }
+          },
+          "additionalProperties": false
+        },
+        "document": {
+          "type": "object",
+          "required": ["sha256", "file_name", "external", "format", "parser", "parsed_path", "page_label_status"],
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "file_name": { "type": "string" },
+            "external": { "type": "boolean" },
+            "format": { "enum": ["hwp", "hwpx"] },
+            "parser": { "type": "string" },
+            "parsed_path": { "type": "string" },
+            "page_label_status": { "const": "not_available" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_id": "apa7-autoethnography",
+  "plan_sha256": null,
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "시간 순서 배열과 장면 코딩을 사용할 계획이다.",
+      "plan_location": "분석방법",
+      "literature_ids": [],
+      "verification_status": "unverified",
+      "evidence_locations": [],
+      "notes": "연구자 제안이며 실제 결과가 아니다."
+    }
+  ],
+  "updated_at": "2030-01-01T00:00:00.000Z"
+}
+

@@ -1,0 +1,15 @@
+{
+  "name": "rok-v0.2-video-source",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "render": "remotion render src/index.jsx RokIntro ../../../media/research-orchestrator-kit-v0.2.mp4 --codec h264 --pixel-format yuv420p --crf 20",
+    "poster": "remotion still src/index.jsx RokIntro ../../../media/video-poster.png --frame 1560"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.534",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.534"
+  }
+}

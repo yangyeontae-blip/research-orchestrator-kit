@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_id": "generic-quantitative",
+  "plan_sha256": null,
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "횡단 설계만으로 인과를 주장하지 않는다.",
+      "plan_location": "기대 기여와 한계",
+      "literature_ids": [],
+      "verification_status": "unverified",
+      "evidence_locations": [],
+      "notes": "공통 방법 검토용 합성 주장이다."
+    }
+  ],
+  "updated_at": "2030-01-01T00:00:00.000Z"
+}
+

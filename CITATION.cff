@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software in academic work, please cite it using the metadata below."
+title: "Research Orchestrator Kit"
+type: software
+version: 0.3.2
+date-released: 2026-10-10
+authors:
+  - family-names: "Contributors"
+repository-code: "https://github.com/yangyeontae-blip/research-orchestrator-kit"
+license: MIT
+abstract: "A Korean-first, file-based and hash-verified workflow for research planning, literature processing, evidence review, approved revision, and optional research-flow video production."
+

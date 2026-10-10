@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "generic",
+  "name": "Generic research workflow",
+  "description": "Journal-neutral workflow with hash-bound human approvals.",
+  "collection_gate": {
+    "human_confirmation": true,
+    "minimum_score_exclusive": null,
+    "minimum_rubric_total": null,
+    "require_hard_checks": false
+  },
+  "required_artifacts": {
+    "study": ["study_record"],
+    "plan": ["plan"],
+    "literature": ["collection_report", "parsed_text"],
+    "review": ["review_report"],
+    "revise": ["plan"],
+    "video_storyboard": ["video_storyboard", "video_source_map"],
+    "video_render": ["video_file", "video_manifest"]
+  }
+}

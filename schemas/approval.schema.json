@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/research-orchestrator/approval.schema.json",
+  "title": "Research Orchestrator approval",
+  "type": "object",
+  "required": ["schema_version", "human_confirmed", "plan"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "approval_id": { "type": "string" },
+    "workflow_id": { "type": "string" },
+    "human_confirmed": { "const": true },
+    "approved_by": { "type": "string" },
+    "plan": { "$ref": "#/$defs/artifact" },
+    "report": { "$ref": "#/$defs/artifact" },
+    "storyboard": { "$ref": "#/$defs/artifact" },
+    "source_map": { "$ref": "#/$defs/artifact" },
+    "approved_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "rubric_total": { "type": "number", "minimum": 0, "maximum": 10 },
+        "hard_checks_passed": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "kind": { "type": "string" },
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

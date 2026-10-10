@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "project_id": "apa7-autoethnography",
+  "profile": "apa7",
+  "markdown": {
+    "path": "examples/synthetic-v2/apa7-autoethnography/plan.md",
+    "sha256": "fd4ad5f1b57021c305d7a9223484b9a4a46be6f56a5115235029da7d8ba28804"
+  },
+  "docx": {
+    "path": ".research-work/docx-qa/sample.docx",
+    "sha256": "0d24a1b02314e5a66aa2f797b2fa49bf9268ccddf5a57d23030a23b675b7696e"
+  },
+  "quality_report": null,
+  "generated_at": "2026-10-09T11:46:03.569Z",
+  "visual_verification": "not_completed"
+}

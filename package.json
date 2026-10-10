@@ -1,0 +1,47 @@
+{
+  "name": "research-orchestrator-kit",
+  "version": "0.3.2",
+  "description": "A Korean-first, evidence-traceable research proposal orchestrator for APA 7, JQI, and generic workflows.",
+  "type": "module",
+  "bin": {
+    "rok": "./src/cli.mjs"
+  },
+  "files": [
+    "src/",
+    "profiles/",
+    "prompts/",
+    "schemas/",
+    "docs/*.md",
+    "examples/synthetic/README.md",
+    "README.md",
+    "README.en.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "CHANGELOG.md",
+    "CITATION.cff",
+    "LICENSE",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md",
+    "config.example.json"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "demo": "node examples/synthetic/run-demo.mjs && node examples/synthetic-v2/run-demo.mjs",
+    "audit": "node scripts/audit-public.mjs",
+    "verify": "node scripts/verify-release.mjs",
+    "pack:check": "node scripts/check-package.mjs"
+  },
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "docx": "9.9.0",
+    "kordoc": "4.21.11",
+    "pdfjs-dist": "6.4.299"
+  }
+}
+

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project_id": "jqi-interview",
+  "plan_sha256": null,
+  "claims": [
+    {
+      "id": "C1",
+      "claim": "면담 자료에 주제분석을 적용할 계획이다.",
+      "plan_location": "Ⅲ. 연구방법",
+      "literature_ids": [],
+      "verification_status": "unverified",
+      "evidence_locations": [],
+      "notes": "방법 제안이며 문헌 확인 전이다."
+    }
+  ],
+  "updated_at": "2030-01-01T00:00:00.000Z"
+}
+

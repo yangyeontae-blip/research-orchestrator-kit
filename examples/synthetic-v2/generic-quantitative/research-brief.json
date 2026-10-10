@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project_id": "generic-quantitative",
+  "workflow_id": null,
+  "title": "가상 학습도구 사용성과 과제 지속의 관계",
+  "idea": "합성 설문 자료로 사용성과 과제 지속 의도의 관계를 검토한다.",
+  "profile": "generic",
+  "entry_mode": "direct_plan",
+  "method": "횡단 설문과 회귀분석",
+  "deadline": "2030-10-31",
+  "institution_guidance": "범용 계획서 구조",
+  "sensitive_information": false,
+  "apa_paper_type": "not_applicable",
+  "created_at": "2030-01-01T00:00:00.000Z"
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "allowed_commit_identities": [
+    {
+      "name": "Research Orchestrator Kit",
+      "email": "research-orchestrator-kit@users.noreply.github.com"
+    }
+  ],
+  "allowed_content_emails": [
+    "research-orchestrator-kit@users.noreply.github.com"
+  ],
+  "allowed_content_identifiers": [
+    "b8319cdc-7627-4e11-ad3a-8f9683e45a45"
+  ],
+  "allowed_binary_files": [
+    {
+      "path": "docs/media/research-orchestrator-kit-v0.2.mp4",
+      "max_bytes": 52428800,
+      "sha256": "59d0668c08e0bf0aa6e43484a1769132a3283445341b8ac03d5c83dd042c7ac2"
+    }
+  ],
+  "note": "This policy keeps personal author identities out of the published history. Repository ownership remains visible on GitHub."
+}

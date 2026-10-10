@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Generated document manifest",
+  "type": "object",
+  "required": ["schema_version", "project_id", "profile", "markdown", "quality_report", "generated_at", "visual_verification"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "project_id": { "type": "string" },
+    "profile": { "enum": ["apa7", "jqi", "generic"] },
+    "markdown": { "$ref": "#/$defs/binding" },
+    "docx": { "$ref": "#/$defs/binding" },
+    "hwpx": { "$ref": "#/$defs/hwpxBinding" },
+    "quality_report": { "anyOf": [{ "$ref": "#/$defs/binding" }, { "type": "null" }] },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "visual_verification": { "enum": ["complete", "not_completed", "not_available"] }
+  },
+  "allOf": [{ "anyOf": [{ "required": ["docx"] }, { "required": ["hwpx"] }] }],
+  "additionalProperties": false,
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "generator": { "type": "string" },
+        "roundtrip_status": { "enum": ["parsed", "not_verified"] }
+      },
+      "additionalProperties": false
+    },
+    "hwpxBinding": {
+      "allOf": [
+        { "$ref": "#/$defs/binding" },
+        { "type": "object", "required": ["generator", "roundtrip_status"], "properties": { "generator": { "type": "string" }, "roundtrip_status": { "enum": ["parsed", "not_verified"] } } }
+      ]
+    }
+  }
+}

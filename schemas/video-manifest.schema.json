@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research-flow video manifest",
+  "type": "object",
+  "required": ["schema_version", "plan_sha256", "storyboard_sha256", "source_map_sha256", "video", "technical_checks", "quality_status", "created_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "plan_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "storyboard_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source_map_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "video": {
+      "type": "object",
+      "required": ["path", "sha256", "duration_seconds", "width", "height", "fps", "video_codec", "audio_codec"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "duration_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "video_codec": { "type": "string" },
+        "audio_codec": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "technical_checks": {
+      "type": "object",
+      "required": ["decoded_full_video", "dimensions_verified", "captions_checked", "audio_checked", "source_licenses_checked"],
+      "properties": {
+        "decoded_full_video": { "type": "boolean" },
+        "dimensions_verified": { "type": "boolean" },
+        "captions_checked": { "type": "boolean" },
+        "audio_checked": { "type": "boolean" },
+        "source_licenses_checked": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "quality_status": { "enum": ["passed", "review_candidate", "failed"] },
+    "quality_score": { "type": ["number", "null"], "minimum": 0, "maximum": 10 },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
+

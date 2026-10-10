@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/research-orchestrator/receipt.schema.json",
+  "title": "Research Orchestrator completion receipt",
+  "type": "object",
+  "required": ["schema_version", "task_id", "token", "status", "artifacts"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "task_id": { "type": "string" },
+    "token": { "type": "string" },
+    "status": { "enum": ["completed", "partial", "failed"] },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "path"],
+        "properties": {
+          "kind": { "type": "string" },
+          "path": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reason": { "type": "string" },
+    "handoff_state": { "enum": ["ready", "hold", "none"] }
+  },
+  "additionalProperties": false
+}

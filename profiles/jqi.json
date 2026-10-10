@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "jqi",
+  "name": "Journal of Qualitative Inquiry (Korea) profile",
+  "description": "Optional profile based on the Korean Association for Qualitative Inquiry rules checked on 2026-10-08.",
+  "official_source": {
+    "title": "한국질적탐구학회 『질적탐구』 투고규정",
+    "url": "https://www.kaqi.or.kr/subList/32000001464",
+    "revision_noted_by_source": "2026-01",
+    "checked_at": "2026-10-09"
+  },
+  "legal_scope": {
+    "bundled_template": false,
+    "affiliated_with_journal": false,
+    "representation": "Independent paraphrase of factual submission requirements with a link to the official source.",
+    "redistribution_rule": "Do not add JQI.hwp, JQI.doc, journal logos, or copied sample manuscripts without an explicit redistribution license from the rights holder.",
+    "third_party_notice": "See THIRD_PARTY_NOTICES.md. The MIT license covers this toolkit, not third-party journal materials."
+  },
+  "official_requirements": {
+    "review_anonymity": "Do not include author names or affiliations in the review manuscript.",
+    "korean_abstract_words_approx": 150,
+    "english_abstract_words_approx": 150,
+    "keywords_max": 8,
+    "manuscript_pages_max_principle": 25,
+    "template_note": "Obtain the current JQI.hwp or JQI.doc directly from the society; it is not bundled here.",
+    "paper": "A4 portrait",
+    "margins_mm": {
+      "top": 20,
+      "bottom": 15,
+      "left": 30,
+      "right": 30,
+      "header": 15,
+      "footer": 15,
+      "binding": 0
+    },
+    "body": {
+      "font": "ShinMyeongJo",
+      "size_pt": 10.5,
+      "width_percent": 90,
+      "line_spacing_percent": 170,
+      "first_line_indent_pt": 10
+    },
+    "fallback_citation_style": "APA 6th edition, as stated by the 2026 official rules"
+  },
+  "collection_gate": {
+    "human_confirmation": true,
+    "minimum_score_exclusive": 9.0,
+    "minimum_rubric_total": 8,
+    "require_hard_checks": true,
+    "note": "These score thresholds are workflow safeguards supplied by this toolkit, not official journal acceptance criteria."
+  },
+  "required_artifacts": {
+    "study": ["study_record"],
+    "plan": ["plan", "quality_review", "literature_handoff"],
+    "literature": ["collection_report", "parsed_text"],
+    "review": ["review_report"],
+    "revise": ["plan", "quality_review", "literature_handoff"],
+    "video_storyboard": ["video_storyboard", "video_source_map"],
+    "video_render": ["video_file", "video_manifest"]
+  }
+}

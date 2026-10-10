@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "plan_sha256": "5db6d67fe724a2c8ebf73111cb1d17191b59cf0113da430de569c250e1057e89",
+  "storyboard_sha256": "cea5e3e79bc40258c8fca5987214834b09a9acfc984df70d2cf1c062f757f070",
+  "source_map_sha256": "152148745aaffcf7db2e98adf0515e9d14de2b1faf3abe77c53ad1ae29d710c6",
+  "video": {
+    "path": "docs/media/research-orchestrator-kit-v0.2.mp4",
+    "sha256": "59d0668c08e0bf0aa6e43484a1769132a3283445341b8ac03d5c83dd042c7ac2",
+    "duration_seconds": 105,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "video_codec": "h264",
+    "audio_codec": "aac"
+  },
+  "technical_checks": {
+    "decoded_full_video": true,
+    "dimensions_verified": true,
+    "captions_checked": true,
+    "audio_checked": true,
+    "source_licenses_checked": true
+  },
+  "quality_status": "passed",
+  "quality_score": null,
+  "created_at": "2026-10-09T12:00:00+09:00"
+}
