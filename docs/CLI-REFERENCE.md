@@ -13,6 +13,9 @@ Run commands from the project root or add `--root <path>`. `rok --help` prints t
 - `rok validate [--plan file]`: updates the common quality report and validates standard artifacts.
 - `rok export [--format docx|hwpx] [--plan file] [--output file]`: exports the canonical Markdown plan to DOCX (default) or local Kordoc-generated HWPX, and records hashes. HWPX additionally records a local round-trip parse; it is not a visual-layout approval.
 - `rok video request [--audience ... --duration 90 --aspect 16:9 --notes ...]`: opens the optional video branch for the current plan.
+- `rok collect-more [--gaps "gap 1,gap 2"]`: after evidence review, record named gaps and the current plan/report hashes, then return to a fresh collection approval. Earlier literature is retained and the combined evidence is reviewed again.
+- `rok finalize [--document docx|hwpx]`: after an approved revision and use verification, inspect the current quality report and exported document, record actual opening/layout/content checks and remaining limitations, then sign off the exact hashes.
+- `rok reopen [--reason "..."]`: preserve finalization history and reopen a finalized workflow when new evidence or changes require more work.
 
 ## Compatible low-level commands
 
@@ -29,7 +32,8 @@ Claims enforce one running task per role. Partial results retain successful arti
 
 ## Human decisions and recovery
 
-- `rok approve`, `rok verify-use` with human checks, and `rok rework` run only in an interactive terminal and ask for a typed confirmation (`APPROVE`, `VERIFIED`, `REWORK`). Non-interactive shells, including agent tool calls, are refused. The engine API itself stays scriptable for tests and trusted automation.
+- `rok approve`, `rok verify-use` with human checks, `rok rework`, `rok collect-more`, `rok finalize`, and `rok reopen` run only in an interactive terminal and ask for a typed confirmation (`APPROVE`, `VERIFIED`, `REWORK`, `COLLECT`, `FINALIZE`, `REOPEN`). Non-interactive shells, including agent tool calls, are refused. The engine API itself stays scriptable for tests and trusted automation.
+- Finalization is a researcher's workflow decision, not journal acceptance. It requires a reviewed revision, plan use verification, current evidence/method/citation quality checks, a matching DOCX/HWPX manifest, observed document checks, and explicitly recorded limitations. Changed bound artifacts mark it stale.
 - Collection-gate scores and hard checks are read from `quality-report.json` bound to the current plan hash; only the JQI human rubric total comes from the approval.
 - `rok literature search|ingest` require an open literature task whose collection approval matches the current plan hash.
 - `rok rework <task-id> [--feedback "..."]` sends a plan or revision (pending use verification or collection approval), a review report (pending revision approval), a storyboard, or a render back with feedback.

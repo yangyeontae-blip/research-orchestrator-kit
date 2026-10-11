@@ -5,9 +5,9 @@
 **A local-first research orchestrator that binds every step, from idea to plan, evidence, and revision, to one hash.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.5.1-5EEAD4)
+![version](https://img.shields.io/badge/version-0.5.2-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-57%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-59%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [한국어](README.md) · [Watch the video](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [CLI reference](docs/CLI-REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md)
@@ -27,6 +27,8 @@ When generative AI assists research, the failure is rarely the model. It is **ve
 - **Evidence states stay visible.** Each claim is `original_verified`, `parsed_verified`, `metadata_only`, or `unverified`. Automated checks, AI assessment, and human judgment are separate fields.
 - **No dead ends.** `rework`, `release` with claim leases, `retry --rebind`, declining all review items, and automatic stale-lock recovery give every state a next action.
 - **Local by default.** PDF, HWP, and HWPX files are parsed locally. Cloud adapters are optional, confirm every call, write only into a fresh per-task directory, and never upload source office documents.
+- **Evidence gaps lead to a focused loop.** `rok collect-more` binds named gaps and the review report to renewed collection approval; earlier literature remains available for the next review.
+- **The researcher closes the workflow.** `rok finalize` checks the revised plan, evidence/method/citation quality, exported document, actual use review, and recorded limitations before hash-bound sign-off.
 
 ## Quick start
 
@@ -44,6 +46,8 @@ rok approve collection                   # shows the bound hashes, asks for APPR
 rok literature search --query "your topic"
 rok literature ingest downloads/paper.pdf
 rok export --format docx                 # or hwpx
+rok collect-more --gaps "missing evidence" # after a review identifies a gap
+rok finalize --document docx             # researcher sign-off after revision and checks
 rok status
 ```
 
@@ -53,13 +57,14 @@ If you get stuck:
 rok rework <task-id> --feedback "..."    # send a plan, review, storyboard, or render back
 rok release <task-id> --reason "..."     # reclaim a task whose agent disappeared
 rok retry <task-id> --rebind             # re-hash changed free inputs
+rok reopen --reason "new evidence"       # preserve finalization history and resume
 ```
 
 There is no scheduler or heartbeat; the kit acts only on your commands. Runtime state, downloaded papers, parsed text, and generated documents stay in Git-ignored directories.
 
 ## Verification
 
-`npm run verify` runs 57 tests (state machine, recovery, human gates, literature, evidence, cloud mocks, DOCX/HWPX export), synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI runs it on Ubuntu and Windows with Node.js 20 and 22.
+`npm run verify` runs 59 tests (state machine, recovery, human gates, literature, evidence, cloud mocks, DOCX/HWPX export), synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI runs it on Ubuntu and Windows with Node.js 20 and 22.
 
 See [use verification](docs/USE-VERIFICATION.md) for the evidence each artifact needs. The project targets a 9.5/10 external rating but does not claim it until the protocol in [`docs/EXTERNAL-EVALUATION.md`](docs/EXTERNAL-EVALUATION.md) is completed.
 

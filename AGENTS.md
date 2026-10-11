@@ -13,7 +13,9 @@
 - `video`: 사용자 요청 뒤 스토리보드·출처 지도 작성, 승인된 구성의 영상 렌더링과 기술 검수.
 
 ## 흐름
-`study → plan → collection approval → literature → review → revision approval → revise`
+`study → plan → collection approval → literature → review → revision approval → revise → researcher finalization`
+
+검토에서 근거 공백이 나오면 `collect-more`로 공백·검토 보고서를 묶어 새 수집 승인을 요청하고, 기존 문헌을 보존한 채 보완 수집 뒤 전체 근거를 다시 검토한다. 보완본은 자동으로 최종본이 되지 않는다.
 
 영상은 현재 계획서가 있을 때만 별도 가지로 시작한다.
 `plan → user video request → storyboard/source-map → video approval → render/QA`
@@ -21,6 +23,7 @@
 - 사용자의 직접 명령으로만 시작한다. 예약·heartbeat를 만들지 않는다.
 - 수집 승인은 정확한 계획서 SHA-256에 묶는다.
 - 반영 승인은 계획서·검토 보고서 SHA-256과 승인 항목에 묶는다.
+- 최종 확정은 검토된 보완본, 품질 보고서, 생성 문서와 사람의 실사용 확인·남은 한계에 묶는다. 원본이 바뀌면 확정은 유효하지 않다.
 - 영상 승인은 계획서·스토리보드·출처 지도의 SHA-256에 묶는다.
 - 파일이 바뀌면 승인을 승계하지 않는다.
 - 담당 에이전트는 receipt만 제출하고 다음 작업을 직접 만들지 않는다.
@@ -59,6 +62,9 @@
 - `rok export`
 - `rok literature search --query "..."`
 - `rok literature ingest <pdf|hwp|hwpx>`
+- `rok collect-more --gaps "..."`
+- `rok finalize --document docx|hwpx`
+- `rok reopen --reason "..."`
 - `rok video request`
 - `rok init --profile generic|apa7|jqi`
 - `node src/cli.mjs enqueue <request.json>`

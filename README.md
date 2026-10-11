@@ -5,9 +5,9 @@
 **연구 아이디어에서 계획서, 문헌 근거, 보완본까지. 모든 단계를 하나의 해시로 묶는 로컬 우선 연구 오케스트레이터**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.5.1-5EEAD4)
+![version](https://img.shields.io/badge/version-0.5.2-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-57%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-59%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [소개 영상](#-소개-영상) · [핵심 아이디어](#-핵심-아이디어) · [작동 방식](#-작동-방식) · [10분 시작](#-10분-시작) · [문서](#-문서) · [English](README.en.md)
@@ -77,27 +77,33 @@ flowchart LR
     L --> E[근거 검토]
     E --> G2{반영 승인<br/>plan + report SHA-256}
     G2 -. rework .-> E
-    G2 -- 모두 반려 --> G1
+    G2 -- 근거 부족: 보완 수집 요청 --> G1
     G2 --> R[보완본]
-    R --> U
+    R --> U2{{보완본 실사용 검증}}
+    U2 --> G4{최종 확정<br/>근거·방법·인용·문서}
+    U2 -- 추가 수집 필요 --> G1
+    G4 --> F([최종본])
     P -. 영상 요청 .-> V1[스토리보드·근거표]
     V1 --> G3{영상 승인<br/>plan + storyboard + source map}
     G3 --> V2[MP4·매니페스트]
 
     classDef gate fill:#FBBF2422,stroke:#FBBF24,color:#FBBF24
-    class G1,G2,G3,U gate
+    class G1,G2,G3,G4,U,U2 gate
 ```
 
 - **관문(◇)** 은 사람이 승인한 정확한 해시에서만 열립니다. 계획서가 바뀌면 그 계획서에 묶인 수집 승인과 영상 승인은 자동으로 무효가 됩니다.
 - **산출물 수준**은 `generated` → `automated_verified` → `use_verified` 세 단계입니다. 계획서는 실제로 사용해 확인한 기록이 있어야 수집 관문으로 넘어갑니다.
 - **영상 가지**는 선택 사항이며 연구계획서 흐름을 막지 않습니다.
+- **보완 수집**은 검토 보고서에서 드러난 근거 공백을 `rok collect-more`에 명시하면 같은 계획서 해시로 수집 승인을 다시 받고 시작합니다. 앞서 확보한 문헌은 보존하고 새 문헌과 함께 다시 근거를 검토합니다.
+- **최종 확정**은 보완본의 근거·방법·인용 자동검사와 사람의 계획서 사용 검증, DOCX/HWPX의 실제 열람·레이아웃·내용 대조, 남은 한계 기록을 마친 뒤 연구자가 `rok finalize`로 결정합니다. 학술 심사 통과를 뜻하지 않습니다.
 
 ### 막혔을 때의 길
 
 | 상황 | 명령 | 동작 |
 |---|---|---|
 | 계획서·검토 보고서·스토리보드를 고쳐야 함 | `rok rework <task> --feedback "..."` | 피드백을 결정 기록에 남기고 같은 입력으로 새 작업을 엽니다 |
-| 근거 반영 항목이 모두 부적절함 | `rok approve revision` → 항목 비움 | 계획서는 그대로 두고 새 수집 회차를 엽니다 |
+| 검토 결과 근거가 부족함 | `rok collect-more --gaps "공백 1,공백 2"` → `rok approve collection` | 공백과 검토 보고서 해시를 새 수집 작업에 묶고, 기존 문헌을 보존한 채 재검토합니다 |
+| 확정 뒤 새 근거나 수정이 생김 | `rok reopen --reason "..."` | 최종 확정 기록을 이력에 남기고 변경된 계획서는 재평가합니다 |
 | 에이전트가 응답 없이 사라짐 | `rok release <task>` → `rok retry <task>` | 작업을 실패로 회수합니다. lease(기본 72시간)가 지나면 같은 역할의 다음 작업이 가져갑니다 |
 | 작업 중 입력 파일이 바뀜 | `rok retry <task> --rebind` | 바뀐 입력만 다시 해시합니다. 승인에 묶인 계획서·보고서는 다시 묶지 않습니다 |
 | 비정상 종료로 `state.lock`이 남음 | 아무 명령 | 죽은 프로세스의 잠금이나 2분 넘은 잠금을 자동으로 정리합니다 |
@@ -121,6 +127,8 @@ rok approve collection                    # 현재 해시를 보여주고 APPROV
 rok literature search --query "..."       # 수집 승인 뒤에만 실행
 rok literature ingest paper.pdf           # 로컬 파싱 · 스캔 PDF는 needs_ocr로 멈춤
 rok export --format docx                  # 또는 hwpx
+rok collect-more --gaps "부족한 근거"         # 검토 보고서 뒤 필요한 경우 새 수집 승인으로 이동
+rok finalize --document docx              # 보완본·근거·문서를 연구자가 확인한 뒤 확정
 rok status                                # 현재 단계와 다음 행동
 ```
 

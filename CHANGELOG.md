@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2 - 2026-10-11
+
+- Added a focused `collect-more` loop that binds explicit evidence gaps and the latest review report to a renewed collection approval, retains earlier literature, and rechecks the combined corpus.
+- Added researcher `finalize` and `reopen` decisions. Finalization requires a reviewed revision, current evidence/method/citation quality checks, verified plan use, opened and compared DOCX/HWPX, and recorded limitations; changed artifacts make the sign-off stale.
+- Updated role handoffs and Korean/English guidance to distinguish a revised draft from a researcher-confirmed final plan.
+
 ## 0.5.1 - 2026-10-11
 
 - Removed the optional pixel office dashboard and `rok office` command at the user's request. `rok status` remains available; the v0.5.0 workflow, video, recovery, and approval changes are preserved.

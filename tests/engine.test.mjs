@@ -208,6 +208,93 @@ test('the synthetic lifecycle stops at the new plan collection gate', async t =>
   assert.equal(status.approvals.revision, null);
 });
 
+test('a focused supplemental collection keeps earlier literature and returns to evidence review', async t => {
+  const { root, engine, state } = await fixture(t);
+  let status = await draftPlan(engine, state);
+  ({ status } = await approveAndRunLiterature(engine, status));
+  const review = status.tasks.find(item => item.stage === 'review');
+  const claimed = await engine.claim(review.id, 'research-agent');
+  await engine.complete({ task_id: review.id, token: claimed.token, status: 'completed', artifacts: [{ kind: 'review_report', path: 'review.md' }] });
+  status = await engine.status();
+  const request = { plan: status.artifacts.plan, report: status.artifacts.review_report, gaps: ['자료 분석의 반례'] };
+  await assert.rejects(engine.collectMore(request), /confirmation/);
+  await assert.rejects(engine.collectMore({ ...request, human_confirmed: true, gaps: [] }), /at least one/);
+  await engine.collectMore({ ...request, human_confirmed: true, requested_by: 'researcher' });
+  status = await engine.status();
+  assert.equal(status.current_stage, 'collection_approval');
+  assert.equal(status.supplemental_collection.gaps[0], '자료 분석의 반례');
+  const approved = await engine.approve('collection', { human_confirmed: true, plan: status.artifacts.plan });
+  assert.match(approved.task.context, /자료 분석의 반례/);
+  assert.ok(approved.task.inputs.some(item => item.sha256 === status.artifacts.review_report.sha256));
+  assert.deepEqual((await engine.collectionGate()).gaps, ['자료 분석의 반례']);
+  await fs.writeFile(path.join(root, 'parsed2.md'), 'synthetic additional parsed text');
+  const literatureClaim = await engine.claim(approved.task.id, 'literature-agent');
+  await engine.complete({ task_id: approved.task.id, token: literatureClaim.token, status: 'completed', artifacts: [
+    { kind: 'collection_report', path: 'collection.md' }, { kind: 'parsed_text', path: 'parsed2.md' }
+  ] });
+  status = await engine.status();
+  const nextReview = status.tasks.filter(item => item.stage === 'review').at(-1);
+  assert.ok(nextReview.inputs.some(item => item.path === 'parsed.md'));
+  assert.ok(nextReview.inputs.some(item => item.path === 'parsed2.md'));
+  assert.match(nextReview.context, /자료 분석의 반례/);
+});
+
+test('a revised plan needs current evidence, document review, and researcher confirmation before finalization', async t => {
+  const { root, engine, state } = await fixture(t);
+  let status = await draftPlan(engine, state);
+  ({ status } = await approveAndRunLiterature(engine, status));
+  const review = status.tasks.find(item => item.stage === 'review');
+  let claimed = await engine.claim(review.id, 'research-agent');
+  await engine.complete({ task_id: review.id, token: claimed.token, status: 'completed', artifacts: [{ kind: 'review_report', path: 'review.md' }] });
+  status = await engine.status();
+  const approved = await engine.approve('revision', {
+    human_confirmed: true, plan: status.artifacts.plan, report: status.artifacts.review_report, approved_items: ['R1']
+  });
+  claimed = await engine.claim(approved.task.id, 'research-agent');
+  await engine.complete({ task_id: approved.task.id, token: claimed.token, status: 'completed', artifacts: [{ kind: 'plan', path: 'plan-v2.md' }] });
+  await verifyPlanUse(engine, approved.task.id, root);
+  status = await engine.status();
+  const plan = status.artifacts.plan;
+  const report = status.artifacts.review_report;
+  const qualityPath = path.join(root, 'quality-report.json');
+  const qualityData = JSON.parse(await fs.readFile(qualityPath, 'utf8'));
+  qualityData.automated.checks = ['evidence_status', 'method_alignment', 'citation_reference'].map(id => ({ id, label: id, passed: true, evidence: 'synthetic checked fixture', source: 'automated' }));
+  await fs.writeFile(qualityPath, JSON.stringify(qualityData));
+  const quality = await engine.artifact({ path: 'quality-report.json' });
+  await fs.writeFile(path.join(root, 'plan-v2.docx'), Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('word/document.xml')]));
+  const document = await engine.artifact({ path: 'plan-v2.docx' });
+  await fs.writeFile(path.join(root, 'document-manifest.json'), JSON.stringify({
+    schema_version: 1, project_id: 'synthetic', profile: 'generic', markdown: { path: plan.path, sha256: plan.sha256 },
+    docx: { path: document.path, sha256: document.sha256 },
+    quality_report: { path: quality.path, sha256: quality.sha256 },
+    generated_at: new Date().toISOString(), visual_verification: 'not_completed'
+  }));
+  const manifest = await engine.artifact({ path: 'document-manifest.json' });
+  const checked_at = new Date().toISOString();
+  const decision = {
+    plan, report, quality_report: quality, document_manifest: manifest, document_kind: 'docx',
+    finalized_by: 'researcher', limitations: '후속 연구에서 다른 학교 맥락을 검토해야 함',
+    research_checks: ['evidence_reviewed', 'method_reviewed', 'citations_reviewed'].map(name => ({
+      name, result: 'passed', method: 'synthetic fixture comparison', evidence: `${name} checked`, checked_at
+    })),
+    document_checks: ['opened_in_application', 'layout_reviewed', 'content_compared'].map(name => ({
+      name, result: 'passed', method: 'synthetic fixture inspection', evidence: `${name} checked`, checked_at
+    }))
+  };
+  await assert.rejects(engine.finalize(decision), /confirmation/);
+  await assert.rejects(engine.finalize({ ...decision, human_confirmed: true, research_checks: [] }), /Researcher must record/);
+  await assert.rejects(engine.finalize({ ...decision, human_confirmed: true, document_checks: [] }), /Open the exported document/);
+  const final = await engine.finalize({ ...decision, human_confirmed: true });
+  assert.equal(final.plan.sha256, plan.sha256);
+  assert.equal((await engine.status()).current_stage, 'finalized');
+  await fs.writeFile(path.join(root, 'plan-v2.md'), 'changed after finalization');
+  assert.equal((await engine.status()).current_stage, 'finalization_stale');
+  await assert.rejects(engine.reopen({ human_confirmed: true }), /reason/);
+  const reopened = await engine.reopen({ human_confirmed: true, reason: 'New evidence' });
+  assert.equal(reopened.current_stage, 'plan');
+  assert.equal((await engine.status()).finalization, null);
+});
+
 async function writeQualityReport(engine, plan, automated) {
   const status = await engine.status();
   await fs.writeFile(path.join(engine.root, 'quality-report.json'), JSON.stringify({

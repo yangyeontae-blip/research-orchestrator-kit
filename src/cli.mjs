@@ -48,6 +48,8 @@ const notes = takeOption('--notes', '');
 const formatOption = takeOption('--format', null);
 const feedbackOption = takeOption('--feedback', null);
 const reasonOption = takeOption('--reason', '');
+const gapsOption = takeOption('--gaps', '');
+const documentOption = takeOption('--document', null);
 const jsonOutput = takeFlag('--json');
 const rebind = takeFlag('--rebind');
 const [command, ...args] = argv;
@@ -142,6 +144,79 @@ async function reworkCommand(taskId) {
   return engine.rework(taskId, { feedback, requested_by: requestedBy || 'human' });
 }
 
+async function collectMoreCommand(file) {
+  if (!stdin.isTTY) throw new Error('Supplemental collection is a human decision and requires an interactive terminal.');
+  const status = await engine.status();
+  const request = file ? await inputJson(file) : {
+    plan: status.artifacts.plan,
+    report: status.artifacts.review_report,
+    gaps: (gapsOption || await ask('부족한 근거·추가 검색 질문 (쉼표 구분): ')).split(',').map(value => value.trim()).filter(Boolean)
+  };
+  request.requested_by ||= await ask('요청자 이름 또는 식별자: ');
+  await confirmHuman([
+    '보완 수집 요청', bindingLine('계획서', request.plan), bindingLine('근거 검토 보고서', request.report),
+    `- 보완할 근거: ${(request.gaps || []).join('; ')}`, '- 다음 단계: 같은 계획서에 대한 새 수집 승인'
+  ], 'COLLECT');
+  return engine.collectMore({ ...request, human_confirmed: true });
+}
+
+async function finalizeCommand(file) {
+  if (!stdin.isTTY) throw new Error('Finalization is a human decision and requires an interactive terminal.');
+  const status = await engine.status();
+  const project = await projectDir(status);
+  const manifestPath = `${project}/document-manifest.json`;
+  const qualityPath = `${project}/quality-report.json`;
+  const request = file ? await inputJson(file) : {
+    plan: status.artifacts.plan,
+    report: status.artifacts.review_report,
+    quality_report: { path: qualityPath },
+    document_manifest: { path: manifestPath },
+    document_kind: documentOption || await ask('확인한 최종 문서 형식 (docx/hwpx): '),
+    finalized_by: await ask('연구자 이름 또는 식별자: '),
+    limitations: await ask('남은 한계·미확인 사항 (없다면 확인 후 "없음"): ')
+  };
+  if (!file) {
+    const researchLabels = [
+      ['evidence_reviewed', '주요 주장과 실제 문헌 근거를 대조했는지'],
+      ['method_reviewed', '연구질문·자료·분석의 정합성을 검토했는지'],
+      ['citations_reviewed', '본문 인용과 참고문헌을 양방향 대조했는지']
+    ];
+    request.research_checks = [];
+    for (const [name, label] of researchLabels) {
+      const result = await ask(`${label} (passed/failed): `);
+      if (!['passed', 'failed'].includes(result)) throw new Error('검사 결과는 passed 또는 failed여야 합니다');
+      const method = await ask('확인 방법: ');
+      const evidence = await ask('실제 관찰 내용: ');
+      request.research_checks.push({ name, result, method, evidence, checked_at: new Date().toISOString() });
+    }
+    const labels = [
+      ['opened_in_application', '문서를 실제 앱에서 열었는지'],
+      ['layout_reviewed', '전체 페이지·표·한글 레이아웃을 확인했는지'],
+      ['content_compared', '문서 내용을 승인 원본 Markdown과 대조했는지']
+    ];
+    request.document_checks = [];
+    for (const [name, label] of labels) {
+      const result = await ask(`${label} (passed/failed): `);
+      if (!['passed', 'failed'].includes(result)) throw new Error('검사 결과는 passed 또는 failed여야 합니다');
+      const method = await ask('확인 방법: ');
+      const evidence = await ask('실제 관찰 내용: ');
+      request.document_checks.push({ name, result, method, evidence, checked_at: new Date().toISOString() });
+    }
+  }
+  await confirmHuman([
+    '최종본 확정', bindingLine('계획서', request.plan), bindingLine('검토 보고서', request.report),
+    `- 최종 문서: ${request.document_kind}`, `- 남은 한계: ${request.limitations}`, `- 확정자: ${request.finalized_by}`
+  ], 'FINALIZE');
+  return engine.finalize({ ...request, human_confirmed: true });
+}
+
+async function reopenCommand() {
+  if (!stdin.isTTY) throw new Error('Reopening a final workflow requires an interactive terminal.');
+  const reason = reasonOption || await ask('최종본을 다시 여는 이유: ');
+  await confirmHuman([`최종 확정 상태를 해제합니다.`, `- 이유: ${reason}`, '- 기존 확정 기록은 이력에 보존됩니다.'], 'REOPEN');
+  return engine.reopen({ human_confirmed: true, reason });
+}
+
 function humanStatus(status) {
   const queued = status.tasks.filter(task => task.status === 'queued');
   const failed = status.tasks.filter(task => ['partial', 'failed'].includes(task.status));
@@ -151,8 +226,12 @@ function humanStatus(status) {
   const pendingUse = status.tasks.find(task => open(task) && ['generated', 'automated_verified'].includes(task.completion_level));
   const next = expired ? `응답 기한이 지난 작업: ${expired.stage} (${expired.id}) → rok finish 또는 rok release`
     : pendingUse ? `검증 필요 (${pendingUse.completion_level}): ${pendingUse.stage} (${pendingUse.id}); 미통과면 rok rework ${pendingUse.id}`
-    : status.current_stage === 'collection_approval' ? '계획서 수집 승인 필요 (rok approve collection, 고칠 점이 있으면 rok rework)'
-    : status.current_stage === 'revision_approval' ? '근거 반영 승인 필요 (rok approve revision, 모두 반려 가능)'
+    : status.current_stage === 'finalized' ? '최종본 확정됨 (새 근거로 다시 시작하려면 rok reopen)'
+    : status.current_stage === 'finalization_stale' ? `최종본 해시 불일치: ${status.finalization?.stale_reason}; rok reopen 필요`
+    : status.current_stage === 'collection_approval' && status.supplemental_collection?.status === 'approval_pending' ? `보완 수집 승인 필요: ${status.supplemental_collection.gaps.join('; ')} (rok approve collection)`
+    : status.current_stage === 'collection_approval' && status.can_finalize ? '검토·보완본: 추가 수집을 승인하거나 근거와 문서를 확인한 뒤 rok finalize'
+    : status.current_stage === 'collection_approval' ? '현재 계획서 수집 승인 필요 (rok approve collection)'
+    : status.current_stage === 'revision_approval' ? '근거 반영 승인 또는 부족한 근거에 대한 rok collect-more 요청 필요'
       : queued.length ? `${queued[0].role} 에이전트의 ${queued[0].stage} 작업 전달`
         : failed.length ? `${failed[0].stage} 작업 retry (입력이 바뀌었으면 --rebind)`
           : '대기 중';
@@ -284,6 +363,7 @@ function usage() {
     'rok video request [--audience ... --duration 90 --aspect 16:9 --notes ...]',
     'rok init --profile generic|apa7|jqi | enqueue <request.json> | claim <task-id> | complete <receipt.json>',
     'rok approve <collection|revision|video> [approval.json] | verify-use <task-id> [verification.json]   (interactive terminal only)',
+    'rok collect-more [--gaps "..."] | finalize [--document docx|hwpx] | reopen [--reason "..."]   (interactive terminal only)',
     'rok rework <task-id> [--feedback "..."]   (interactive terminal only) | release <task-id> [--reason "..."] | retry <task-id> [--rebind] [--root path]'
   ].join('\n');
 }
@@ -312,6 +392,9 @@ try {
   else if (command === 'retry') result = await engine.retry(args[0], { rebind });
   else if (command === 'release') result = await engine.release(args[0], reasonOption);
   else if (command === 'rework') result = await reworkCommand(args[0]);
+  else if (command === 'collect-more') result = await collectMoreCommand(args[0]);
+  else if (command === 'finalize') result = await finalizeCommand(args[0]);
+  else if (command === 'reopen') result = await reopenCommand();
   else if (command === 'literature' && args[0] === 'search') {
     await engine.collectionGate();
     const status = await engine.status();

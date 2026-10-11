@@ -7,7 +7,7 @@ flowchart LR
   U[Researcher] --> O[Orchestrator]
   G1 -. rework .-> R
   G2 -. rework .-> R2
-  G2 -. decline all .-> G1
+  G2 -. named evidence gaps / collect-more .-> G1
   O --> S[Study]
   S --> R[Research]
   R --> G1{Collection approval}
@@ -15,6 +15,10 @@ flowchart LR
   L --> R2[Evidence review]
   R2 --> G2{Revision approval}
   G2 --> RV[Revised plan]
+  RV --> UF{Plan use and document checks}
+  UF --> G4{Researcher finalization}
+  G4 --> F[Final plan]
+  UF -. more evidence .-> G1
   R --> VR[Video request]
   VR --> V1[Storyboard + source map]
   V1 --> G3{Video approval}
@@ -23,11 +27,15 @@ flowchart LR
 
 The main state schema remains version 1. New v0.2 data is optional or stored in standard artifacts so v0.1 workspaces can still be read. Only the orchestrator advances stages. A local exclusive lock protects state mutation, and one role cannot hold two running tasks.
 
-No state is a dead end. The lock records its PID and host; a lock from a dead process, or one older than two minutes, is reclaimed, and a live lock is waited on briefly. Failed and partial receipts are accepted even when an input changed under the agent, with the mismatch kept as `binding_warning`. Every claim carries a lease; `release` fails an abandoned task, and an expired lease is failed when another task needs the role. `retry --rebind` re-hashes free inputs but never an approval-bound plan or report. `rework` returns a plan, review report, storyboard, or render with feedback recorded as a user decision, and declining every review item opens a new collection round for the same plan.
+No state is a dead end. The lock records its PID and host; a lock from a dead process, or one older than two minutes, is reclaimed, and a live lock is waited on briefly. Failed and partial receipts are accepted even when an input changed under the agent, with the mismatch kept as `binding_warning`. Every claim carries a lease; `release` fails an abandoned task, and an expired lease is failed when another task needs the role. `retry --rebind` re-hashes free inputs but never an approval-bound plan or report. `rework` returns a plan, review report, storyboard, or render with feedback recorded as a user decision. `collect-more` binds named evidence gaps to the current plan and review report, opens a new collection approval, preserves earlier literature, and sends the combined corpus back for evidence review.
 
 Human decisions are a real boundary at the CLI: approvals, human use checks, and rework require an interactive terminal and a typed confirmation, collection-gate scores come only from the plan-bound quality report, and literature commands require an open literature task with a matching collection approval. The engine API stays scriptable, so the local user account remains the trust boundary.
 
 Collection approval binds the current Markdown plan hash. Revision approval binds that plan, the evidence-review report, and selected item IDs. Video approval binds the plan, storyboard, and source map. A changed source invalidates its approval. Video is an optional branch and does not block the research workflow.
+
+Finalization is a separate human decision after an approved revision. It binds the revised plan, source review, current quality report, exported document manifest and file, recorded plan/document use verification, and remaining limitations. The status becomes stale if a bound artifact changes. `reopen` retains the previous sign-off and either returns the same plan to collection approval or sends a changed plan for reassessment. Finalization records workflow readiness, not journal acceptance.
+
+The document manifest records export-time verification and may still show `visual_verification: not_completed`; the later observed opening/layout/content checks live in the separate finalization record. This prevents post-export verification from silently rewriting a hash-bound export manifest.
 
 Crossref and OpenAlex supply metadata only. PDF.js parses local PDFs and Kordoc parses local HWP/HWPX files the user lawfully holds. Evidence states are limited to original verified, parsed verified, abstract/metadata only, and unverified. Automated checks, AI assessment, and human judgment remain separate in the quality report.
 

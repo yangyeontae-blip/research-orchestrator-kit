@@ -100,6 +100,9 @@ export class Engine {
         tasks: [],
         artifacts: {},
         approvals: { collection: null, revision: null, video: null },
+        supplemental_collection: null,
+        revision_lineage: null,
+        finalization: null,
         branches: { video: { status: 'idle', requested_plan_sha256: null } },
         project_dir: options.project_dir || null,
         errors: [],
@@ -268,10 +271,14 @@ export class Engine {
           request_id: `literature-${state.cycle}-${plan.sha256.slice(0, 12)}`,
           workflow_id: state.workflow_id,
           stage: 'literature',
-          inputs: [plan],
+          inputs: state.supplemental_collection?.status === 'approval_pending' ? [plan, state.supplemental_collection.report] : [plan],
           plan,
-          user_decisions: [`Collection approved by ${state.approvals.collection.approved_by} for plan ${plan.sha256}.`]
+          user_decisions: [`Collection approved by ${state.approvals.collection.approved_by} for plan ${plan.sha256}.`],
+          context: state.supplemental_collection?.status === 'approval_pending'
+            ? `Supplemental collection requested for these evidence gaps: ${state.supplemental_collection.gaps.join('; ')}. Compare with review report ${state.supplemental_collection.report.path}; preserve previous literature.`
+            : ''
         }, true);
+        if (state.supplemental_collection?.status === 'approval_pending') state.supplemental_collection = { ...state.supplemental_collection, status: 'collecting', task_id: task.id };
         state.current_stage = 'literature';
         state.history.push({ event: 'collection_approved', plan_sha256: plan.sha256, task_id: task.id, at: now() });
         return { approval: state.approvals.collection, task: this.#publicTask(task) };
@@ -322,6 +329,117 @@ export class Engine {
       state.current_stage = 'revise';
       state.history.push({ event: 'revision_approved', report_sha256: report.sha256, task_id: task.id, at: now() });
       return { approval: state.approvals.revision, task: this.#publicTask(task) };
+    });
+  }
+
+  async collectMore(request = {}) {
+    return this.#transaction(async state => {
+      if (state.current_stage !== 'revision_approval') throw new Error('Supplemental collection requires a completed evidence review');
+      if (request.human_confirmed !== true) throw new Error('Explicit human confirmation is required');
+      const gaps = [...new Set((request.gaps || []).map(value => String(value).trim()).filter(Boolean))];
+      if (!gaps.length) throw new Error('Name at least one evidence gap or search question');
+      const plan = await this.artifact(required(request.plan, 'Plan binding is required'), 'plan');
+      const report = await this.artifact(required(request.report, 'Review report binding is required'), 'review_report');
+      this.#sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
+      this.#sameBinding(report, state.artifacts.review_report, 'Review report version does not match the current workflow');
+      state.cycle += 1;
+      state.approvals.collection = null;
+      state.approvals.revision = null;
+      state.supplemental_collection = { plan_sha256: plan.sha256, report, gaps, requested_by: request.requested_by || 'human', requested_at: now(), status: 'approval_pending' };
+      state.current_stage = 'collection_approval';
+      state.history.push({ event: 'supplemental_collection_requested', plan_sha256: plan.sha256, report_sha256: report.sha256, gaps, at: now() });
+      return state.supplemental_collection;
+    });
+  }
+
+  async finalize(request = {}) {
+    return this.#transaction(async state => {
+      if (state.current_stage !== 'collection_approval' || !state.revision_lineage) throw new Error('Finalization requires a reviewed and revised plan awaiting a new collection decision');
+      if (state.supplemental_collection) throw new Error('Finish the requested supplemental collection, review, and revision before finalization');
+      if (request.human_confirmed !== true || !String(request.finalized_by || '').trim()) throw new Error('Explicit researcher confirmation and identity are required');
+      const plan = await this.artifact(required(request.plan, 'Plan binding is required'), 'plan');
+      this.#sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
+      if (state.revision_lineage.plan_sha256 !== plan.sha256) throw new Error('Current plan is not the reviewed revision');
+      const report = await this.artifact(required(request.report, 'Review report binding is required'), 'review_report');
+      this.#sameBinding(report, state.revision_lineage.report, 'Review report changed since the approved revision');
+      const revisionTask = state.tasks.find(task => task.id === state.revision_lineage.task_id);
+      if (revisionTask?.completion_level !== 'use_verified') throw new Error('Revised plan requires independent use verification');
+      if (state.tasks.some(task => task.branch !== 'video' && ['queued', 'running', 'partial', 'failed'].includes(task.status) && task.cycle === state.cycle)) {
+        throw new Error('Finish or resolve current-cycle tasks before finalization');
+      }
+      const project = state.project_dir ? path.resolve(this.root, state.project_dir) : path.dirname(path.resolve(this.root, plan.path));
+      const quality = await this.artifact(required(request.quality_report, 'Current quality report binding is required'), 'quality_report');
+      const expectedQuality = await this.artifact(path.relative(this.root, path.join(project, 'quality-report.json')), 'quality_report');
+      this.#sameBinding(quality, expectedQuality, 'Quality report is not current');
+      const qualityData = await readJson(path.resolve(this.root, quality.path));
+      await new SchemaRegistry(this.root).assert('quality-report', qualityData);
+      if (qualityData.plan.sha256 !== plan.sha256 || qualityData.automated.hard_checks_passed !== true) throw new Error('Current plan quality checks must pass');
+      for (const id of ['evidence_status', 'method_alignment', 'citation_reference']) {
+        if (!qualityData.automated.checks.some(check => check.id === id && check.passed === true)) throw new Error(`Finalization requires passing ${id} check`);
+      }
+      const researchChecks = request.research_checks || [];
+      for (const name of ['evidence_reviewed', 'method_reviewed', 'citations_reviewed']) {
+        const check = researchChecks.find(item => item.name === name);
+        if (check?.result !== 'passed' || !String(check.method || '').trim() || !String(check.evidence || '').trim()) {
+          throw new Error(`Researcher must record a passed ${name} check with method and observation`);
+        }
+      }
+      const manifest = await this.artifact(required(request.document_manifest, 'Document manifest binding is required'), 'document_manifest');
+      const expectedManifest = await this.artifact(path.relative(this.root, path.join(project, 'document-manifest.json')), 'document_manifest');
+      this.#sameBinding(manifest, expectedManifest, 'Document manifest is not current');
+      const documentData = await readJson(path.resolve(this.root, manifest.path));
+      await new SchemaRegistry(this.root).assert('document-manifest', documentData);
+      if (documentData.markdown.path !== plan.path || documentData.markdown.sha256 !== plan.sha256
+        || documentData.quality_report?.sha256 !== quality.sha256) throw new Error('Document manifest is not bound to the current plan and quality report');
+      const kind = request.document_kind;
+      if (!['docx', 'hwpx'].includes(kind) || !documentData[kind]) throw new Error('Choose an exported DOCX or HWPX for final document review');
+      const document = await this.artifact(documentData[kind], kind);
+      const checkedAt = now();
+      const documentVerification = await verifyArtifactUse(this.root, {
+        task_id: revisionTask.id, kind, artifact: document, manifest_path: manifest.path,
+        human_confirmation: { confirmed: true, verified_by: request.finalized_by, checked_at: checkedAt },
+        human_checks: request.document_checks || []
+      });
+      if (documentVerification.status !== 'use_verified') throw new Error('Open the exported document and record passed layout and content checks before finalization');
+      const limitations = String(request.limitations || '').trim();
+      if (!limitations) throw new Error('Record remaining limitations, or explicitly state none after review');
+      state.finalization = {
+        plan, report, quality_report: quality, document_manifest: manifest, document,
+        document_verification: documentVerification, revision_task_id: revisionTask.id,
+        research_checks: researchChecks,
+        approved_items: state.revision_lineage.approved_items,
+        limitations, finalized_by: request.finalized_by.trim(), finalized_at: checkedAt
+      };
+      state.current_stage = 'finalized';
+      state.history.push({ event: 'finalized', plan_sha256: plan.sha256, report_sha256: report.sha256, at: checkedAt });
+      return state.finalization;
+    });
+  }
+
+  async reopen(request = {}) {
+    return this.#transaction(async state => {
+      if (state.current_stage !== 'finalized' || !state.finalization) throw new Error('Only a finalized workflow can be reopened');
+      if (request.human_confirmed !== true || !String(request.reason || '').trim()) throw new Error('Explicit human confirmation and a reason are required');
+      const previous = state.finalization;
+      const currentPlan = await this.artifact({ path: previous.plan.path, kind: 'plan' });
+      state.previous_finalizations ||= [];
+      state.previous_finalizations.push(previous);
+      state.finalization = null;
+      state.approvals.collection = null;
+      state.approvals.revision = null;
+      state.cycle += 1;
+      let task = null;
+      if (currentPlan.sha256 === previous.plan.sha256) state.current_stage = 'collection_approval';
+      else {
+        state.revision_lineage = null;
+        task = await this.#enqueue(state, {
+          request_id: `reopen-plan-${state.cycle}`, workflow_id: state.workflow_id,
+          stage: 'plan', inputs: [currentPlan],
+          context: `Reassess the changed former final plan. Earlier approvals and finalization cannot be reused. Reason: ${request.reason}`
+        }, true);
+      }
+      state.history.push({ event: 'reopened', reason: request.reason, changed_plan: currentPlan.sha256 !== previous.plan.sha256, at: now() });
+      return { current_stage: state.current_stage, task: task && this.#publicTask(task) };
     });
   }
 
@@ -475,22 +593,33 @@ export class Engine {
       throw new Error(`Literature search and ingest need an approved, open literature task (current stage: ${state.current_stage}). Approve collection or retry the literature task first.`);
     }
     const plan = await this.artifact(task.plan, 'plan');
+    for (const input of task.inputs) await this.artifact(input);
     const approval = state.approvals.collection;
     if (!approval || approval.plan_sha256 !== plan.sha256) throw new Error('Collection approval is missing or bound to another plan hash');
-    return { task_id: task.id, plan_sha256: plan.sha256 };
+    return { task_id: task.id, plan_sha256: plan.sha256, gaps: state.supplemental_collection?.task_id === task.id ? state.supplemental_collection.gaps : [] };
   }
 
   async status() {
     const state = await this.#load();
+    let finalization = state.finalization || null;
+    if (finalization) {
+      try {
+        for (const binding of [finalization.plan, finalization.report, finalization.quality_report, finalization.document_manifest, finalization.document]) await this.artifact(binding);
+        finalization = { ...finalization, valid: true };
+      } catch (error) { finalization = { ...finalization, valid: false, stale_reason: error.message }; }
+    }
     return {
       schema_version: state.schema_version,
       workflow_id: state.workflow_id,
       profile: state.profile,
-      current_stage: state.current_stage,
+      current_stage: state.current_stage === 'finalized' && finalization?.valid === false ? 'finalization_stale' : state.current_stage,
       cycle: state.cycle,
       tasks: state.tasks.map(task => ({ ...this.#publicTask(task), ...(leaseExpired(task) ? { lease_expired: true } : {}) })),
       artifacts: state.artifacts,
       approvals: state.approvals,
+      can_finalize: state.current_stage === 'collection_approval' && Boolean(state.revision_lineage) && !state.supplemental_collection,
+      supplemental_collection: state.supplemental_collection || null,
+      finalization,
       branches: state.branches || { video: { status: 'idle', requested_plan_sha256: null } },
       project_dir: state.project_dir || null,
       errors: state.errors,
@@ -599,10 +728,16 @@ export class Engine {
     if (task.stage === 'plan' || task.stage === 'revise') {
       const plan = this.#findArtifact(task, 'plan');
       const priorVideoPlan = state.branches?.video?.requested_plan_sha256;
+      state.revision_lineage = task.stage === 'revise' ? {
+        plan_sha256: plan.sha256, source_plan_sha256: task.plan.sha256,
+        report: task.report, approved_items: [...(state.approvals.revision?.approved_items || [])], task_id: task.id
+      } : null;
       state.artifacts.plan = plan;
       state.artifacts.plan_support = task.artifacts.filter(item => item.path !== plan.path);
       state.approvals.collection = null;
       state.approvals.revision = null;
+      state.supplemental_collection = null;
+      state.finalization = null;
       if (priorVideoPlan && priorVideoPlan !== plan.sha256) {
         state.approvals.video = null;
         state.branches.video = { status: 'stale_plan', requested_plan_sha256: priorVideoPlan, current_plan_sha256: plan.sha256 };
@@ -612,19 +747,21 @@ export class Engine {
       return;
     }
     if (task.stage === 'literature') {
-      state.artifacts.literature = task.artifacts;
+      state.artifacts.literature = this.#mergeArtifacts(state.artifacts.literature || [], task.artifacts);
+      if (state.supplemental_collection?.task_id === task.id) state.supplemental_collection.status = 'reviewing';
       await this.#enqueue(state, {
         request_id: `review-${state.cycle}-${task.id}`,
         workflow_id: state.workflow_id,
         stage: 'review',
-        inputs: task.artifacts,
+        inputs: state.artifacts.literature,
         plan: state.artifacts.plan,
-        context: 'Compare parsed evidence with the current plan and report exact support, gaps, and conflicts.'
+        context: `Compare all collected and parsed evidence with the current plan; report exact support, gaps, and conflicts.${state.supplemental_collection?.status === 'reviewing' ? ` Recheck requested gaps: ${state.supplemental_collection.gaps.join('; ')}.` : ''}`
       }, true);
       return;
     }
     if (task.stage === 'review') {
       state.artifacts.review_report = this.#findArtifact(task, 'review_report');
+      if (state.supplemental_collection?.status === 'reviewing') state.supplemental_collection.status = 'reviewed';
       state.approvals.revision = null;
       state.current_stage = 'revision_approval';
     }
