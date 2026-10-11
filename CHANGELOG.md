@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 - 2026-10-11
+
+- Removed the optional pixel office dashboard and `rok office` command at the user's request. `rok status` remains available; the v0.5.0 workflow, video, recovery, and approval changes are preserved.
+
 ## 0.5.0 - 2026-10-11
 
 - Failed and partial receipts are accepted even after an input changed; added `rok release`, claim leases, and `rok retry --rebind` so no task can stay running or queued forever.

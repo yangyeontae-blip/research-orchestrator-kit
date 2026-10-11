@@ -5,9 +5,9 @@
 **A local-first research orchestrator that binds every step, from idea to plan, evidence, and revision, to one hash.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.5.0-5EEAD4)
+![version](https://img.shields.io/badge/version-0.5.1-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-58%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-57%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [한국어](README.md) · [Watch the video](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [CLI reference](docs/CLI-REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md)
@@ -59,7 +59,7 @@ There is no scheduler or heartbeat; the kit acts only on your commands. Runtime 
 
 ## Verification
 
-`npm run verify` runs 58 tests (state machine, recovery, human gates, literature, evidence, cloud mocks, DOCX/HWPX export), synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI runs it on Ubuntu and Windows with Node.js 20 and 22.
+`npm run verify` runs 57 tests (state machine, recovery, human gates, literature, evidence, cloud mocks, DOCX/HWPX export), synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI runs it on Ubuntu and Windows with Node.js 20 and 22.
 
 See [use verification](docs/USE-VERIFICATION.md) for the evidence each artifact needs. The project targets a 9.5/10 external rating but does not claim it until the protocol in [`docs/EXTERNAL-EVALUATION.md`](docs/EXTERNAL-EVALUATION.md) is completed.
 

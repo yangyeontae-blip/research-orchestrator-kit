@@ -5,9 +5,9 @@
 **연구 아이디어에서 계획서, 문헌 근거, 보완본까지. 모든 단계를 하나의 해시로 묶는 로컬 우선 연구 오케스트레이터**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.5.0-5EEAD4)
+![version](https://img.shields.io/badge/version-0.5.1-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-58%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-57%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [소개 영상](#-소개-영상) · [핵심 아이디어](#-핵심-아이디어) · [작동 방식](#-작동-방식) · [10분 시작](#-10분-시작) · [문서](#-문서) · [English](README.en.md)
@@ -147,8 +147,6 @@ rok status                                # 현재 단계와 다음 행동
 
 `next`는 다음 대기 작업 하나를 해당 역할의 어댑터에 전달합니다. 인계에는 목표, 사용자 결정, 입력 파일·버전·해시, 미해결 사항, 다음 행동, 완료 조건이 들어갑니다. 실제 산출물을 만든 뒤 `rok finish <작업 ID>`의 질문에 결과 파일을 입력하면 엔진이 파일 존재와 해시를 확인합니다. 기존 JSON receipt 방식(`rok complete`)도 유지됩니다.
 
-`rok office`는 이 저장소의 원장만 보여주는 로컬 읽기 전용 화면입니다. 다른 Codex·Claude 채팅은 탐색하지 않습니다.
-
 </details>
 
 <details>
@@ -282,7 +280,7 @@ research-orchestrator-kit/
 ├─ schemas/               # 모든 산출물의 JSON Schema
 ├─ prompts/               # 역할별 에이전트 지침
 ├─ examples/              # 실제 연구자료 없는 합성 사례
-├─ tests/                 # node:test 58개
+├─ tests/                 # node:test 57개
 └─ docs/                  # 설계 · CLI · 검증 · 개인정보 · 영상 소스
 ```
 

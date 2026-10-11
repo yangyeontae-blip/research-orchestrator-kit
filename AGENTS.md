@@ -55,7 +55,6 @@
 - `rok new`
 - `rok next`
 - `rok finish <task-id>`
-- `rok office`
 - `rok validate`
 - `rok export`
 - `rok literature search --query "..."`

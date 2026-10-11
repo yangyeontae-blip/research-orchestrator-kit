@@ -15,7 +15,6 @@ import { ingestLiteraturePdf } from './pdf.mjs';
 import { ingestLiteratureKoreanOffice } from './kordoc.mjs';
 import { exportPlanDocx, exportPlanHwpx } from './export.mjs';
 import { generateQualityReport, validateStandardArtifacts } from './quality.mjs';
-import { startOffice } from './office.mjs';
 
 const argv = process.argv.slice(2);
 const takeOption = (name, fallback = null) => {
@@ -47,8 +46,6 @@ const duration = Number(takeOption('--duration', '90'));
 const aspectRatio = takeOption('--aspect', '16:9');
 const notes = takeOption('--notes', '');
 const formatOption = takeOption('--format', null);
-const officePort = takeOption('--port', null);
-const legacyRoot = takeOption('--legacy-root', null);
 const feedbackOption = takeOption('--feedback', null);
 const reasonOption = takeOption('--reason', '');
 const jsonOutput = takeFlag('--json');
@@ -285,7 +282,6 @@ function usage() {
     'rok next | finish <task-id> | status [--json] | validate [--project dir] [--plan file] | export [--format docx|hwpx] [--plan file] [--output file]',
     'rok literature search --query "..." | rok literature ingest <pdf|hwp|hwpx> [--id literature-id]',
     'rok video request [--audience ... --duration 90 --aspect 16:9 --notes ...]',
-    'rok office [--port 4317] [--legacy-root "absolute project path"] (local read-only dashboard)',
     'rok init --profile generic|apa7|jqi | enqueue <request.json> | claim <task-id> | complete <receipt.json>',
     'rok approve <collection|revision|video> [approval.json] | verify-use <task-id> [verification.json]   (interactive terminal only)',
     'rok rework <task-id> [--feedback "..."]   (interactive terminal only) | release <task-id> [--reason "..."] | retry <task-id> [--rebind] [--root path]'
@@ -301,13 +297,6 @@ try {
     const answers = answersFile ? await inputJson(answersFile) : await promptResearchBrief();
     result = await createResearchProject(root, answers);
   } else if (command === 'next') result = await nextAction();
-  else if (command === 'office') {
-    const port = officePort == null ? 0 : Number(officePort);
-    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('--port must be an integer from 0 to 65535');
-    const office = await startOffice(root, { port, legacyRoot: legacyRoot ? path.resolve(legacyRoot) : undefined });
-    stdout.write(`ROK 픽셀 작업실: ${office.url}\n종료하려면 Ctrl+C를 누르세요.\n`);
-    await new Promise(() => {});
-  }
   else if (command === 'init') {
     if (!profile) throw new Error('Select a research-plan profile explicitly: --profile generic|apa7|jqi');
     result = await engine.init({ profile });
