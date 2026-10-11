@@ -5,6 +5,9 @@ The kit uses files and SHA-256 digests as the handoff boundary. Runtime state st
 ```mermaid
 flowchart LR
   U[Researcher] --> O[Orchestrator]
+  G1 -. rework .-> R
+  G2 -. rework .-> R2
+  G2 -. decline all .-> G1
   O --> S[Study]
   S --> R[Research]
   R --> G1{Collection approval}
@@ -19,6 +22,10 @@ flowchart LR
 ```
 
 The main state schema remains version 1. New v0.2 data is optional or stored in standard artifacts so v0.1 workspaces can still be read. Only the orchestrator advances stages. A local exclusive lock protects state mutation, and one role cannot hold two running tasks.
+
+No state is a dead end. The lock records its PID and host; a lock from a dead process, or one older than two minutes, is reclaimed, and a live lock is waited on briefly. Failed and partial receipts are accepted even when an input changed under the agent, with the mismatch kept as `binding_warning`. Every claim carries a lease; `release` fails an abandoned task, and an expired lease is failed when another task needs the role. `retry --rebind` re-hashes free inputs but never an approval-bound plan or report. `rework` returns a plan, review report, storyboard, or render with feedback recorded as a user decision, and declining every review item opens a new collection round for the same plan.
+
+Human decisions are a real boundary at the CLI: approvals, human use checks, and rework require an interactive terminal and a typed confirmation, collection-gate scores come only from the plan-bound quality report, and literature commands require an open literature task with a matching collection approval. The engine API stays scriptable, so the local user account remains the trust boundary.
 
 Collection approval binds the current Markdown plan hash. Revision approval binds that plan, the evidence-review report, and selected item IDs. Video approval binds the plan, storyboard, and source map. A changed source invalidates its approval. Video is an optional branch and does not block the research workflow.
 

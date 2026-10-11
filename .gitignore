@@ -17,6 +17,7 @@ node_modules/
 Thumbs.db
 *.mp4
 !docs/media/research-orchestrator-kit-v0.2.mp4
+!docs/media/research-orchestrator-kit-v0.5.mp4
 
 # Local video render logs
 docs/video-*-render*.log

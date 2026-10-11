@@ -1,0 +1,19 @@
+{
+  "name": "rok-v0.5-video-source",
+  "private": true,
+  "version": "0.5.0",
+  "scripts": {
+    "audio": "node ../build-audio.mjs",
+    "studio": "remotion studio src/index.jsx",
+    "render": "remotion render src/index.jsx RokOrchestration ../../../media/rok-v0.5-raw.mp4 --codec h264 --pixel-format yuv420p --crf 23 --audio-bitrate 160k",
+    "master": "ffmpeg -y -i ../../../media/rok-v0.5-raw.mp4 -c:v copy -af loudnorm=I=-16:TP=-1.5:LRA=11 -ar 48000 -c:a aac -b:a 160k -movflags +faststart ../../../media/research-orchestrator-kit-v0.5.mp4",
+    "poster": "ffmpeg -y -ss 13.5 -i ../../../media/research-orchestrator-kit-v0.5.mp4 -frames:v 1 -vf scale=1280:-1 -q:v 3 ../../../media/research-orchestrator-kit-v0.5-poster.jpg"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.534",
+    "@remotion/google-fonts": "4.0.534",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.534"
+  }
+}

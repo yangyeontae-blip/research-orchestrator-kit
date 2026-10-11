@@ -45,11 +45,25 @@ plan → user video request → storyboard/source map → video approval → ren
 
 구성 요소와 신뢰 경계는 [아키텍처 문서](docs/ARCHITECTURE.md)에 정리했다.
 
+### 3.1 막다른 길 없는 상태 기계 (v0.5)
+
+v0.4까지의 엔진은 정상 경로에서는 엄격했지만, 예외 경로 몇 곳에서 작업이 영원히 멈출 수 있었다. 실행 중 입력 파일이 바뀌면 실패 receipt조차 거부되었고, 비정상 종료로 남은 잠금 파일은 모든 명령을 막았으며, 수집 승인 대기 상태에서 계획서를 되돌릴 방법이 없었다. v0.5는 각 경우에 명시적인 전이를 추가했다.
+
+| 막힌 상태 | v0.5 전이 |
+|---|---|
+| 실행 중 입력 변경 | 실패·부분 receipt는 해시 불일치를 `binding_warning`으로 기록하고 수락. `retry --rebind`가 승인에 묶이지 않은 입력만 다시 해시 |
+| 응답 없는 에이전트 | `release`로 회수, claim마다 lease를 두고 만료 작업은 같은 역할의 다음 claim 때 실패 처리 |
+| 남은 잠금 파일 | 잠금에 PID·호스트를 기록하고 죽은 프로세스나 2분 넘은 잠금을 회수, 살아 있는 잠금은 짧게 대기 |
+| 계획서·검토·영상 반려 | `rework`가 피드백을 사용자 결정에 기록하고 같은 입력으로 새 작업을 생성 |
+| 반영 항목 전부 부적절 | `decline_all` 승인으로 계획서를 유지한 채 새 수집 회차 시작 |
+
+같은 버전에서 사람 관문도 형식이 아닌 실제 장치로 바꾸었다. 승인, 사람 실사용 검증, 재작업 요청은 대화형 터미널에서만 기록되고, 수집 관문의 점수는 승인자가 적는 값이 아니라 계획서 해시에 묶인 품질 보고서에서 읽는다. 문헌 검색·등록 명령은 현재 계획서에 대한 수집 승인이 있을 때만 실행된다. API 어댑터는 작업별 새 디렉터리에만 쓰고 기존 파일을 덮어쓰지 않으며, receipt 검증을 파일 쓰기보다 먼저 한다.
+
 ## 4. 구현
 
-- `src/engine.mjs`: 상태 전환, 해시 검증, 잠금, 승인, 재시도
+- `src/engine.mjs`: 상태 전환, 해시 검증, 잠금과 회수, 승인, 재시도·재결속, 재작업, lease
 - `src/cli.mjs`: 연구자용 `new`, `next`, `literature`, `validate`, `export`, `video`와 저수준 호환 명령
-- `src/adapters/`: Codex 메시지, Claude inbox, 수동 인계 출력
+- `src/adapters/`: Codex 메시지, Claude inbox, 수동 인계, 호출마다 확인하는 OpenAI·Anthropic API
 - `profiles/`: 범용 규칙과 선택형 APA 7·JQI 규칙
 - `src/literature.mjs`, `src/pdf.mjs`: Crossref·OpenAlex 검색과 로컬 PDF.js 파싱
 - `src/quality.mjs`, `src/export.mjs`: 근거·품질 검사와 Markdown 기반 DOCX 생성
@@ -62,6 +76,8 @@ plan → user video request → storyboard/source map → video approval → ren
 자동 테스트는 다음 속성을 검증한다.
 
 - 상태 전환·중복 방지·세 승인·재개·프로필 관문
+- 막힌 상태의 회수: 실패 receipt, release, lease 만료, rebind, 잠금 회수, 재작업, 전체 반려
+- 사람 관문: 비대화형 승인 거부, 품질 보고서 기반 점수, 수집 승인 전 문헌 명령 거부
 - 문헌 검색 중복과 API 재시도, PDF 오류·스캔·서지 불일치·부분 재개
 - 근거 장부·품질 보고서·DOCX 구조와 클라우드 mock 호출
 - 개인정보·비밀정보·배포 패키지·영상 가지 감사
@@ -80,6 +96,7 @@ plan → user video request → storyboard/source map → video approval → ren
 - APA 7 프로필은 범용 연구계획서 구조를 보조할 뿐, 특정 대학·학과·교수의 과제 지침이나 공식 매뉴얼 확인을 대신하지 않는다.
 - JQI 프로필은 투고 형식 보조 규칙이며 학회의 승인이나 최신 양식 적합성을 보증하지 않는다.
 - 자동 검사는 연구 내용의 학술적 타당성이나 인용의 진실성을 대신하지 않는다.
+- 대화형 터미널 요구는 에이전트의 비대화형 셸 호출을 막지만, 같은 컴퓨터에서 엔진 API를 직접 호출하는 코드까지 막지는 않는다. 로컬 사용자 계정이 신뢰 경계다.
 - 외부 연구자 평가를 마치기 전에는 9.5점 달성을 주장하지 않는다.
 
 ## 8. 재현 방법

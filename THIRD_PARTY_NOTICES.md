@@ -31,3 +31,10 @@ The names of the society and journal are used only to identify the intended subm
 - OpenAlex API metadata: https://docs.openalex.org/
 
 The toolkit queries metadata services under their respective terms. It does not redistribute paywalled article files. The repository video uses original text and geometric graphics and contains no third-party music, logos, or article content.
+
+## Introduction video (docs/video/v0.5)
+
+- Remotion 4.0.534 and `@remotion/google-fonts`, Remotion License: https://www.remotion.dev/license
+- Noto Sans KR and JetBrains Mono, SIL Open Font License 1.1
+- Narration generated with Microsoft Edge neural TTS through the `edge-tts` CLI
+- Background pad and sound effects synthesized with FFmpeg; no recorded music or samples

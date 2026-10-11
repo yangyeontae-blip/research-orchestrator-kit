@@ -1,0 +1,175 @@
+{
+  "fps": 30,
+  "total_frames": 2928,
+  "scenes": [
+    {
+      "id": "versions",
+      "from": 0,
+      "frames": 312,
+      "voice": "vo/01-versions.mp3",
+      "voice_frames": 264,
+      "lead_frames": 21
+    },
+    {
+      "id": "title",
+      "from": 312,
+      "frames": 332,
+      "voice": "vo/02-title.mp3",
+      "voice_frames": 284,
+      "lead_frames": 21
+    },
+    {
+      "id": "agents",
+      "from": 644,
+      "frames": 403,
+      "voice": "vo/03-agents.mp3",
+      "voice_frames": 355,
+      "lead_frames": 21
+    },
+    {
+      "id": "gates",
+      "from": 1047,
+      "frames": 412,
+      "voice": "vo/04-gates.mp3",
+      "voice_frames": 364,
+      "lead_frames": 21
+    },
+    {
+      "id": "invalidate",
+      "from": 1459,
+      "frames": 241,
+      "voice": "vo/05-invalidate.mp3",
+      "voice_frames": 193,
+      "lead_frames": 21
+    },
+    {
+      "id": "recovery",
+      "from": 1700,
+      "frames": 409,
+      "voice": "vo/06-recovery.mp3",
+      "voice_frames": 361,
+      "lead_frames": 21
+    },
+    {
+      "id": "evidence",
+      "from": 2109,
+      "frames": 343,
+      "voice": "vo/07-evidence.mp3",
+      "voice_frames": 295,
+      "lead_frames": 21
+    },
+    {
+      "id": "outputs",
+      "from": 2452,
+      "frames": 236,
+      "voice": "vo/08-outputs.mp3",
+      "voice_frames": 188,
+      "lead_frames": 21
+    },
+    {
+      "id": "close",
+      "from": 2688,
+      "frames": 240,
+      "voice": "vo/09-close.mp3",
+      "voice_frames": 189,
+      "lead_frames": 21
+    }
+  ],
+  "captions": [
+    {
+      "from": 21,
+      "to": 131,
+      "text": "계획서 최종, 최종 진짜, 최종 수정본."
+    },
+    {
+      "from": 131,
+      "to": 285,
+      "text": "연구는 버전이 바뀌는 순간, 근거와 어긋나기 시작합니다."
+    },
+    {
+      "from": 333,
+      "to": 437,
+      "text": "Research Orchestrator Kit."
+    },
+    {
+      "from": 437,
+      "to": 537,
+      "text": "아이디어에서 계획서, 문헌 근거, 보완본까지."
+    },
+    {
+      "from": 537,
+      "to": 617,
+      "text": "모든 단계를 하나의 해시로 묶습니다."
+    },
+    {
+      "from": 665,
+      "to": 829,
+      "text": "기획팀장은 공부, 연구, 문헌, 영상 에이전트에게 일을 나눕니다."
+    },
+    {
+      "from": 829,
+      "to": 1020,
+      "text": "모든 인계에는 목표와 입력 파일, 그리고 SHA-256 해시가 함께 갑니다."
+    },
+    {
+      "from": 1068,
+      "to": 1228,
+      "text": "문헌 수집과 근거 반영은 사람이 승인한 바로 그 버전에서만 진행됩니다."
+    },
+    {
+      "from": 1228,
+      "to": 1432,
+      "text": "승인은 사람이 터미널에서 직접 입력하고, 점수는 계획서에 묶인 품질 보고서에서만 읽습니다."
+    },
+    {
+      "from": 1480,
+      "to": 1673,
+      "text": "계획서가 한 글자만 바뀌어도 해시가 달라지고, 이전 승인은 그 자리에서 무효가 됩니다."
+    },
+    {
+      "from": 1721,
+      "to": 1838,
+      "text": "그리고 어떤 단계도 막다른 길이 되지 않습니다."
+    },
+    {
+      "from": 1838,
+      "to": 2010,
+      "text": "재작업 요청, 응답 없는 작업 회수, 비정상 종료 뒤 잠금 정리까지."
+    },
+    {
+      "from": 2010,
+      "to": 2082,
+      "text": "오케스트레이터가 길을 엽니다."
+    },
+    {
+      "from": 2130,
+      "to": 2319,
+      "text": "모든 주장은 원문 확인, 파싱 확인, 메타데이터, 미확인 중 하나로 남습니다."
+    },
+    {
+      "from": 2319,
+      "to": 2425,
+      "text": "읽지 않은 문헌을 읽었다고 말하지 않습니다."
+    },
+    {
+      "from": 2473,
+      "to": 2661,
+      "text": "마크다운 원본 하나에서 워드와 한글 문서를 만들고, 원본이 바뀌면 다시 만듭니다."
+    },
+    {
+      "from": 2709,
+      "to": 2747,
+      "text": "판단은 연구자에게."
+    },
+    {
+      "from": 2747,
+      "to": 2800,
+      "text": "기록은 오케스트레이터에게."
+    },
+    {
+      "from": 2800,
+      "to": 2898,
+      "text": "Research Orchestrator Kit."
+    }
+  ]
+}
