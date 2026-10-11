@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use this software in academic work, please cite it using the metadata below."
 title: "Research Orchestrator Kit"
 type: software
-version: 0.3.2
-date-released: 2026-10-10
+version: 0.4.0
+date-released: 2026-10-11
 authors:
   - family-names: "Contributors"
 repository-code: "https://github.com/yangyeontae-blip/research-orchestrator-kit"

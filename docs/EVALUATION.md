@@ -60,6 +60,19 @@ The example uses invented institutions, authors, and research materials. It demo
 
 The example is a workflow evaluation. It is not evidence of research quality, retrieval accuracy, or empirical validity.
 
+## End-user verification
+
+The automated suite checks files, schemas, hashes, and synthetic flows. Final completion is recorded separately after exercising the delivered artifact:
+
+| Artifact | End-user check |
+|---|---|
+| Research plan | Human review of citation evidence and research question–data–analysis alignment |
+| DOCX/HWPX | Open the export; inspect Korean text, tables, page breaks, and correspondence with the approved Markdown |
+| Video | At the published URL, click play, seek through the video, and hear its audio |
+| README or web page | Open the public URL and use its links and key controls |
+
+If the check cannot be performed, report `generated; end-user verification pending` with the reason. A passing CI badge alone is not an end-user verification result.
+
 ## Remaining evaluation gaps
 
 - No distributed-filesystem concurrency test.

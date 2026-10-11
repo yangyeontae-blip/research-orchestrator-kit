@@ -80,7 +80,9 @@ function humanStatus(status) {
   const queued = status.tasks.filter(task => task.status === 'queued');
   const failed = status.tasks.filter(task => ['partial', 'failed'].includes(task.status));
   const video = status.branches?.video?.status || 'idle';
-  const next = status.current_stage === 'collection_approval' ? '계획서 수집 승인 필요'
+  const pendingUse = status.tasks.find(task => task.status === 'completed' && ['generated', 'automated_verified'].includes(task.completion_level) && ['plan', 'revise', 'video_render'].includes(task.stage));
+  const next = pendingUse ? `검증 필요 (${pendingUse.completion_level}): ${pendingUse.stage} (${pendingUse.id})`
+    : status.current_stage === 'collection_approval' ? '계획서 수집 승인 필요'
     : status.current_stage === 'revision_approval' ? '근거 반영 승인 필요'
       : queued.length ? `${queued[0].role} 에이전트의 ${queued[0].stage} 작업 전달`
         : failed.length ? `${failed[0].stage} 작업 retry`
@@ -126,7 +128,7 @@ function usage() {
     'rok literature search --query "..." | rok literature ingest <pdf|hwp|hwpx> [--id literature-id]',
     'rok video request [--audience ... --duration 90 --aspect 16:9 --notes ...]',
     'rok init --profile generic|apa7|jqi | enqueue <request.json> | claim <task-id> | complete <receipt.json>',
-    'rok approve <collection|revision|video> <approval.json> | retry <task-id> [--root path]'
+    'rok verify-use <task-id> <verification.json> | approve <collection|revision|video> <approval.json> | retry <task-id> [--root path]'
   ].join('\n');
 }
 
@@ -148,6 +150,7 @@ try {
     result = { task, dispatch: await dispatch(task), token: task.token };
   } else if (command === 'complete') result = await engine.complete(await inputJson(args[0]));
   else if (command === 'approve') result = await engine.approve(args[0], await inputJson(args[1]));
+  else if (command === 'verify-use') result = await engine.verifyUse(args[0], await inputJson(args[1]));
   else if (command === 'status') result = await engine.status();
   else if (command === 'retry') result = await engine.retry(args[0]);
   else if (command === 'literature' && args[0] === 'search') {

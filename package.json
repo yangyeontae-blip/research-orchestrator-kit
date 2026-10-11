@@ -1,6 +1,6 @@
 {
   "name": "research-orchestrator-kit",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "A Korean-first, evidence-traceable research proposal orchestrator for APA 7, JQI, and generic workflows.",
   "type": "module",
   "bin": {
@@ -44,4 +44,3 @@
     "pdfjs-dist": "6.4.299"
   }
 }
-

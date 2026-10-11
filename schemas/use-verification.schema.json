@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Artifact use verification report",
+  "type": "object",
+  "required": ["schema_version", "task_id", "kind", "artifact", "result", "status", "checked_at", "human_confirmation", "checks"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["plan", "docx", "hwpx", "video", "readme"] },
+    "artifact": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "result": { "enum": ["passed", "failed", "not_run"] },
+    "status": { "enum": ["generated", "automated_verified", "use_verified"] },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "human_confirmation": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["verified_by", "checked_at"],
+          "properties": {
+            "verified_by": { "type": "string" },
+            "checked_at": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "result", "evidence", "source"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "result": { "enum": ["passed", "failed", "not_run"] },
+          "evidence": { "type": "string" },
+          "source": { "enum": ["automated", "human"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

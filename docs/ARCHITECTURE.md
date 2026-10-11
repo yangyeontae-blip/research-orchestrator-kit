@@ -25,3 +25,7 @@ Collection approval binds the current Markdown plan hash. Revision approval bind
 Crossref and OpenAlex supply metadata only. PDF.js parses local PDFs and Kordoc parses local HWP/HWPX files the user lawfully holds. Evidence states are limited to original verified, parsed verified, abstract/metadata only, and unverified. Automated checks, AI assessment, and human judgment remain separate in the quality report.
 
 The canonical plan is Markdown. DOCX/HWPX and their manifest bindings are derived from the same source. HWPX additionally receives a local Kordoc round-trip parse, which is not visual-layout verification. Cloud adapters accept only allowlisted text files, require per-call human confirmation, and never upload source office documents.
+
+Every role handoff records the goal, existing user decisions, input file/version/hash, unresolved items, next action, and completion criteria. A receipt proves only what its artifacts and checks show. Reporting distinguishes artifact creation, automated verification, and end-user verification. Research plans need a source and methods review; exported documents need opening and visual inspection; published videos need play, seek, and sound checks at their public URL. Missing checks remain explicitly unverified.
+
+Video and HWPX export run on request and do not change the main research sequence. Release operations follow [`RELEASE-OPERATIONS.md`](RELEASE-OPERATIONS.md).

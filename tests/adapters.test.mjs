@@ -17,6 +17,7 @@ test('Codex adapter returns a target and a self-contained message', () => {
   assert.equal(result.target, 'replace-me');
   assert.match(result.message, /task-example/);
   assert.match(result.message, /receipt JSON/);
+  for (const label of ['Goal:', 'User decisions:', 'Input versions:', 'Unresolved:', 'Next action:', 'Completion conditions:']) assert.match(result.message, new RegExp(label));
 });
 
 test('Claude adapter writes a portable request file inside the project', async t => {
@@ -28,5 +29,7 @@ test('Claude adapter writes a portable request file inside the project', async t
   const result = await claudeDispatch(root, task, { inbox: '.research-work/claude' });
   const body = JSON.parse(await fs.readFile(path.join(root, result.handoff_file), 'utf8'));
   assert.equal(body.task_id, task.id);
+  assert.equal(body.handoff.input_versions[0].sha256, 'a'.repeat(64));
+  assert.deepEqual(body.handoff.user_decisions, []);
   await assert.rejects(claudeDispatch(root, task, { inbox: '../outside' }), /inside the project root/);
 });

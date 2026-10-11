@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Engine } from '../src/engine.mjs';
 
@@ -18,6 +19,7 @@ async function fixture(t, profile = 'generic') {
     await fs.rm(root, { recursive: true, force: true });
   });
   await fs.mkdir(path.join(root, 'profiles'));
+  await fs.cp(path.join(sourceRoot, 'schemas'), path.join(root, 'schemas'), { recursive: true });
   await fs.copyFile(path.join(sourceRoot, 'profiles', 'generic.json'), path.join(root, 'profiles', 'generic.json'));
   await fs.copyFile(path.join(sourceRoot, 'profiles', 'apa7.json'), path.join(root, 'profiles', 'apa7.json'));
   await fs.copyFile(path.join(sourceRoot, 'profiles', 'jqi.json'), path.join(root, 'profiles', 'jqi.json'));
@@ -43,7 +45,38 @@ async function draftPlan(engine, state, { supportArtifacts = false } = {}) {
   const artifacts = [{ kind: 'plan', path: 'plan.md' }];
   if (supportArtifacts) artifacts.push({ kind: 'quality_review', path: 'quality.md' }, { kind: 'literature_handoff', path: 'handoff.md' });
   await engine.complete({ task_id: task.id, token: claim.token, status: 'completed', artifacts });
+  await verifyPlanUse(engine, task.id, engine.root);
   return engine.status();
+}
+
+async function verifyPlanUse(engine, taskId, root) {
+  const pending = (await engine.status()).tasks.find(item => item.id === taskId);
+  assert.equal(pending.completion_level, 'generated');
+  const plan = pending.artifacts.find(item => item.kind === 'plan');
+  await fs.writeFile(path.join(root, 'quality-report.json'), JSON.stringify({
+    schema_version: 1, project_id: 'synthetic', profile: (await engine.status()).profile, plan: { path: plan.path, sha256: plan.sha256 },
+    automated: { score: 10, hard_checks_passed: true, checks: [], limitations: [] },
+    ai_assessment: null, human_assessment: null, generated_at: new Date().toISOString()
+  }));
+  const automated = await engine.verifyUse(taskId, { task_id: taskId, kind: 'plan', artifact: plan });
+  assert.equal(automated.completion_level, 'automated_verified');
+  const checked_at = new Date().toISOString();
+  await assert.rejects(engine.verifyUse(taskId, {
+    task_id: taskId, kind: 'plan', artifact: plan,
+    human_confirmation: { confirmed: true, verified_by: pending.claimant, checked_at },
+    human_checks: [
+      { name: 'evidence_source_checked', result: 'passed', evidence: 'Synthetic sources reviewed', method: 'fixture inspection', checked_at },
+      { name: 'method_alignment_reviewed', result: 'passed', evidence: 'Synthetic alignment reviewed', method: 'fixture inspection', checked_at }
+    ]
+  }), /Independent use reviewer/);
+  await engine.verifyUse(taskId, {
+    task_id: taskId, kind: 'plan', artifact: plan,
+    human_confirmation: { confirmed: true, verified_by: 'synthetic-test-reviewer', checked_at },
+    human_checks: [
+      { name: 'evidence_source_checked', result: 'passed', evidence: 'Synthetic fixture sources reviewed', method: 'fixture inspection', checked_at },
+      { name: 'method_alignment_reviewed', result: 'passed', evidence: 'Synthetic question/data/method alignment reviewed', method: 'fixture inspection', checked_at }
+    ]
+  });
 }
 
 async function approveAndRunLiterature(engine, status, receiptStatus = 'completed') {
@@ -70,6 +103,22 @@ test('init and enqueue are idempotent, but request ids cannot be reused with dif
   const second = await engine.enqueue(request);
   assert.equal(first.id, second.id);
   await assert.rejects(engine.enqueue({ ...request, stage: 'plan' }), /different content/);
+});
+
+test('a legacy request key remains idempotent without accepting changed context', async t => {
+  const { root, engine, state } = await fixture(t);
+  const request = { request_id: 'legacy-plan', workflow_id: state.workflow_id, stage: 'plan', inputs: [{ path: 'input.md' }], context: 'old context' };
+  const task = await engine.enqueue(request);
+  const stateFile = path.join(root, '.research-work', 'state.json');
+  const stored = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+  const old = stored.tasks.find(item => item.id === task.id);
+  old.key = createHash('sha256').update(JSON.stringify({
+    workflow_id: state.workflow_id, requestId: request.request_id, stage: request.stage,
+    inputs: old.inputs, plan: null, report: null, cycle: old.cycle
+  })).digest('hex');
+  await fs.writeFile(stateFile, JSON.stringify(stored));
+  assert.equal((await engine.enqueue(request)).id, task.id);
+  await assert.rejects(engine.enqueue({ ...request, context: 'changed' }), /different content/);
 });
 
 test('claim is exclusive and does not expose the token in status', async t => {
@@ -151,6 +200,7 @@ test('the synthetic lifecycle stops at the new plan collection gate', async t =>
   });
   claim = await engine.claim(revision.task.id, 'research-agent');
   await engine.complete({ task_id: revision.task.id, token: claim.token, status: 'completed', artifacts: [{ kind: 'plan', path: 'plan-v2.md' }] });
+  await verifyPlanUse(engine, revision.task.id, engine.root);
   status = await engine.status();
   assert.equal(status.current_stage, 'collection_approval');
   assert.equal(status.cycle, 2);

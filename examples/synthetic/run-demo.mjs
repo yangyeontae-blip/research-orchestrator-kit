@@ -1,4 +1,5 @@
 import path from 'node:path';
+import * as fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Engine } from '../../src/engine.mjs';
 
@@ -6,6 +7,25 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const workDirName = `.research-work/demo-${Date.now()}`;
 const engine = new Engine(root, { workDirName });
 const rel = value => `examples/synthetic/${value}`;
+async function verifySyntheticPlan(taskId) {
+  const task = (await engine.status()).tasks.find(item => item.id === taskId);
+  const plan = task.artifacts.find(item => item.kind === 'plan');
+  await fs.writeFile(path.join(root, workDirName, 'quality-report.json'), JSON.stringify({
+    schema_version: 1, project_id: 'synthetic', profile: 'generic', plan: { path: plan.path, sha256: plan.sha256 },
+    automated: { score: 10, hard_checks_passed: true, checks: [], limitations: [] },
+    ai_assessment: null, human_assessment: null, generated_at: new Date().toISOString()
+  }));
+  await engine.verifyUse(taskId, { task_id: taskId, kind: 'plan', artifact: plan, project_dir: workDirName });
+  const checked_at = new Date().toISOString();
+  await engine.verifyUse(taskId, {
+    task_id: taskId, kind: 'plan', artifact: plan, project_dir: workDirName,
+    human_confirmation: { confirmed: true, verified_by: 'synthetic-demo-reviewer', checked_at },
+    human_checks: [
+      { name: 'evidence_source_checked', result: 'passed', evidence: 'Synthetic fixture checked', method: 'fixture inspection', checked_at },
+      { name: 'method_alignment_reviewed', result: 'passed', evidence: 'Synthetic plan method checked', method: 'fixture inspection', checked_at }
+    ]
+  });
+}
 
 const state = await engine.init({ profile: 'generic' });
 await engine.enqueue({
@@ -38,6 +58,7 @@ await engine.complete({
   status: 'completed',
   artifacts: [{ kind: 'plan', path: rel('outputs/plan-v1.md') }]
 });
+await verifySyntheticPlan(task.id);
 
 status = await engine.status();
 await engine.approve('collection', {
@@ -94,6 +115,7 @@ await engine.complete({
   status: 'completed',
   artifacts: [{ kind: 'plan', path: rel('outputs/plan-v2.md') }]
 });
+await verifySyntheticPlan(task.id);
 
 status = await engine.status();
 process.stdout.write(JSON.stringify({

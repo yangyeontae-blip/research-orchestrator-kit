@@ -1,3 +1,4 @@
+import { buildHandoff } from '../handoff.mjs';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -18,6 +19,7 @@ export async function claudeDispatch(root, task, agentConfig = {}) {
     inputs: task.inputs,
     plan: task.plan,
     context: task.context,
+    handoff: buildHandoff(task),
     receipt_schema: 'schemas/receipt.schema.json'
   };
   await fs.writeFile(target, JSON.stringify(payload, null, 2) + '\n', 'utf8');

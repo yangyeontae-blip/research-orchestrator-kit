@@ -14,7 +14,9 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/artifact" }
     },
-    "context": { "type": "string" }
+    "context": { "type": "string" },
+    "user_decisions": { "type": "array", "items": { "type": "string" } },
+    "unresolved_items": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": false,
   "$defs": {

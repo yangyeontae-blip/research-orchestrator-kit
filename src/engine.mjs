@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { SchemaRegistry } from './schemas.mjs';
+import { verifyArtifactUse } from './use-verification.mjs';
 
 export const ROLE_FOR_STAGE = Object.freeze({
   study: 'study',
@@ -15,6 +16,7 @@ export const ROLE_FOR_STAGE = Object.freeze({
 
 const TERMINAL = new Set(['completed', 'partial', 'failed']);
 const RECEIPT_STATUSES = new Set(['completed', 'partial', 'failed']);
+const USE_VERIFICATION_STAGES = new Set(['plan', 'revise', 'video_render']);
 const slash = value => value.split(path.sep).join('/');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const now = () => new Date().toISOString();
@@ -138,8 +140,48 @@ export class Engine {
       if (task.stage === 'video_render') await this.#validateVideoManifest(task);
       task.status = 'completed';
       task.token = null;
+      task.completion_level = 'generated';
       state.history.push({ event: 'completed', task_id: task.id, stage: task.stage, at: now() });
+      if (USE_VERIFICATION_STAGES.has(task.stage)) {
+        if (task.branch === 'video') state.branches.video = { ...state.branches.video, status: 'use_verification', task_id: task.id };
+        else state.current_stage = `${task.stage}_use_verification`;
+        state.history.push({ event: 'use_verification_required', task_id: task.id, stage: task.stage, at: now() });
+        return this.#publicTask(task);
+      }
       await this.#advance(state, task, receipt);
+      return this.#publicTask(task);
+    });
+  }
+
+  async verifyUse(taskId, specification) {
+    return this.#transaction(async state => {
+      const task = state.tasks.find(item => item.id === taskId);
+      if (!task || task.status !== 'completed' || !USE_VERIFICATION_STAGES.has(task.stage)) {
+        throw new Error('Use verification requires a completed plan, revision, or video render task');
+      }
+      if (task.completion_level === 'use_verified') return this.#publicTask(task);
+      if (!['generated', 'automated_verified'].includes(task.completion_level)) throw new Error('Artifact generation must finish before use verification');
+      await this.#verifyTaskBindings(state, task);
+      const expected = this.#findArtifact(task, task.stage === 'video_render' ? 'video_file' : 'plan');
+      if (specification?.task_id !== task.id) throw new Error('Use verification task id does not match');
+      if (specification?.kind !== (task.stage === 'video_render' ? 'video' : 'plan')) throw new Error('Use verification kind does not match the task');
+      const actual = await this.artifact(specification.artifact);
+      this.#sameBinding(actual, expected, 'Use verification is bound to another artifact version');
+      const report = await verifyArtifactUse(this.root, specification);
+      if (report.status === 'use_verified'
+        && String(report.human_confirmation?.verified_by || '').trim().toLowerCase() === String(task.claimant || '').trim().toLowerCase()) {
+        throw new Error('Independent use reviewer must differ from the task claimant');
+      }
+      task.use_verification = report;
+      task.completion_level = report.status;
+      if (report.status !== 'use_verified') {
+        state.history.push({ event: 'use_verification_incomplete', task_id: task.id, stage: task.stage, at: now() });
+        return this.#publicTask(task);
+      }
+      task.completion_level = 'use_verified';
+      task.use_verified_at = now();
+      state.history.push({ event: 'use_verified', task_id: task.id, stage: task.stage, at: now() });
+      await this.#advance(state, task, {});
       return this.#publicTask(task);
     });
   }
@@ -175,6 +217,7 @@ export class Engine {
           branch: 'video',
           inputs: [plan, storyboard, sourceMap],
           plan,
+          user_decisions: [`Storyboard approved by ${state.approvals.video.approved_by} for plan ${plan.sha256}.`],
           context: 'Render only the approved storyboard. Preserve the source map, privacy decisions, and license manifest.'
         }, true);
         state.branches.video = { ...state.branches.video, status: 'rendering', task_id: task.id };
@@ -198,7 +241,8 @@ export class Engine {
           workflow_id: state.workflow_id,
           stage: 'literature',
           inputs: [plan],
-          plan
+          plan,
+          user_decisions: [`Collection approved by ${state.approvals.collection.approved_by} for plan ${plan.sha256}.`]
         }, true);
         state.current_stage = 'literature';
         state.history.push({ event: 'collection_approved', plan_sha256: plan.sha256, task_id: task.id, at: now() });
@@ -224,6 +268,7 @@ export class Engine {
         inputs: [plan, report],
         plan,
         report,
+        user_decisions: [`Revision approved by ${state.approvals.revision.approved_by}; items: ${state.approvals.revision.approved_items.join(', ')}.`],
         context: `Apply only approved review items: ${state.approvals.revision.approved_items.join(', ')}`
       }, true);
       state.current_stage = 'revise';
@@ -250,6 +295,7 @@ export class Engine {
         branch: 'video',
         inputs: [plan],
         plan,
+        user_decisions: [`User requested a research-flow video for plan ${plan.sha256}.`],
         context: JSON.stringify({
           audience: request.audience || 'research audience',
           duration_seconds: request.duration_seconds || 90,
@@ -315,10 +361,15 @@ export class Engine {
     const plan = request.plan ? await this.artifact(request.plan, 'plan') : null;
     const report = request.report ? await this.artifact(request.report, 'review_report') : null;
     const requestId = required(request.request_id, 'request_id is required');
-    const key = digest(JSON.stringify({ workflow_id: state.workflow_id, requestId, stage, inputs, plan, report, cycle: state.cycle }));
+    const userDecisions = request.user_decisions || [];
+    const unresolvedItems = request.unresolved_items || [];
+    const key = digest(JSON.stringify({ workflow_id: state.workflow_id, requestId, stage, inputs, plan, report, context: request.context || '', userDecisions, unresolvedItems, cycle: state.cycle }));
     const sameId = state.tasks.find(task => task.request_id === requestId);
     if (sameId) {
-      if (sameId.key !== key) throw new Error(`request_id was already used with different content: ${requestId}`);
+      const legacyKey = digest(JSON.stringify({ workflow_id: state.workflow_id, requestId, stage, inputs, plan, report, cycle: state.cycle }));
+      const legacyMatch = sameId.key === legacyKey && sameId.context === (request.context || '')
+        && userDecisions.length === 0 && unresolvedItems.length === 0;
+      if (sameId.key !== key && !legacyMatch) throw new Error(`request_id was already used with different content: ${requestId}`);
       return sameId;
     }
     const duplicate = state.tasks.find(task => task.key === key);
@@ -338,6 +389,8 @@ export class Engine {
       plan,
       report,
       context: request.context || '',
+      user_decisions: userDecisions,
+      unresolved_items: unresolvedItems,
       artifacts: [],
       attempts: [],
       created_at: now()

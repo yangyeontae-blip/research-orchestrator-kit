@@ -109,6 +109,13 @@ export async function createResearchProject(root, rawAnswers, options = {}) {
     workflow_id: state.workflow_id,
     stage: answers.entry_mode === 'study_then_plan' ? 'study' : 'plan',
     inputs: [{ kind: answers.entry_mode === 'study_then_plan' ? 'study_input' : 'research_idea', path: relative }],
+    user_decisions: [
+      `Proposal profile: ${brief.profile}`,
+      `Entry mode: ${answers.entry_mode}`,
+      `Research method: ${brief.method}`,
+      ...(brief.profile === 'apa7' ? [`APA paper type: ${brief.apa_paper_type}`] : [])
+    ],
+    unresolved_items: brief.institution_guidance ? [] : ['Submission institution guidance was not supplied.'],
     context: `Research brief: workspace/${projectId}/research-brief.json`
   });
   return { brief, project_dir: `workspace/${projectId}`, first_task: task };

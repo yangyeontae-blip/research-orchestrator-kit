@@ -17,6 +17,21 @@ async function planReady(t) {
   const planTask = (await engine.status()).tasks[0];
   const claim = await engine.claim(planTask.id, 'research');
   await engine.complete({ task_id: planTask.id, token: claim.token, status: 'completed', artifacts: [{ kind: 'plan', path: 'workspace/video/plan.md' }] });
+  const plan = (await engine.status()).tasks.find(item => item.id === planTask.id).artifacts.find(item => item.kind === 'plan');
+  await fs.writeFile(path.join(root, 'workspace', 'video', 'quality-report.json'), JSON.stringify({ schema_version: 1, project_id: 'synthetic', profile: 'generic', plan: { path: plan.path, sha256: plan.sha256 },
+    automated: { score: 10, hard_checks_passed: true, checks: [], limitations: [] },
+    ai_assessment: null, human_assessment: null, generated_at: new Date().toISOString() }));
+  const automatic = await engine.verifyUse(planTask.id, { task_id: planTask.id, kind: 'plan', artifact: plan });
+  assert.equal(automatic.completion_level, 'automated_verified');
+  const checked_at = new Date().toISOString();
+  await engine.verifyUse(planTask.id, {
+    task_id: planTask.id, kind: 'plan', artifact: plan,
+    human_confirmation: { confirmed: true, verified_by: 'synthetic-test-reviewer', checked_at },
+    human_checks: [
+      { name: 'evidence_source_checked', result: 'passed', evidence: 'Synthetic source checked', method: 'fixture inspection', checked_at },
+      { name: 'method_alignment_reviewed', result: 'passed', evidence: 'Synthetic method alignment checked', method: 'fixture inspection', checked_at }
+    ]
+  });
   return { root, engine };
 }
 
@@ -64,7 +79,8 @@ test('video branch requires an explicit request and storyboard approval bound to
     artifacts: [videoBinding, { kind: 'video_manifest', path: 'workspace/video/video-manifest.json' }]
   });
   status = await engine.status();
-  assert.equal(status.branches.video.status, 'completed');
+  assert.equal(status.branches.video.status, 'use_verification');
+  assert.equal(status.tasks.find(item => item.id === approved.task.id).completion_level, 'generated');
   assert.equal(status.current_stage, 'collection_approval');
 });
 

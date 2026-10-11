@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 - 2026-10-11
+
+- Separated artifact creation, automated verification, and use verification for plans and rendered videos; downstream gates now wait for recorded use evidence.
+- Added artifact-specific checks for plans, DOCX/HWPX exports, video playback and audio, and published README links.
+- Added six-field role handoffs covering goal, user decisions, input versions, unresolved items, next action, and completion conditions.
+- Kept optional video/HWPX branches and schema-1 request compatibility, including legacy request keys.
+- Documented immutable release tags and public-path checks; synthetic tests do not count as external researcher validation.
+
+## 0.3.2 - 2026-10-10
+
+- Rebuilt the public Git history as a single clean release commit after a synthetic test identifier caused the full-history privacy audit to fail.
+
 ## 0.3.1 - 2026-10-10
 
 - Repaired the public-history privacy audit fixture so it keeps rejecting unapproved UUID-like values without flagging its own dynamically constructed test value.
@@ -45,8 +57,4 @@
 - Added full-history privacy checks and an allowlisted project commit identity.
 - Added reproducibility, architecture, evaluation, privacy, and third-party-rights documentation.
 - Added Windows and Ubuntu verification in GitHub Actions.
-
-## 0.3.2 - 2026-10-10
-
-- Rebuilt the public Git history as a single clean release commit after a synthetic test identifier caused the full-history privacy audit to fail.
 
