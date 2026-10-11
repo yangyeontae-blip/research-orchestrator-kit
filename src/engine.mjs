@@ -349,6 +349,20 @@ export class Engine {
     };
   }
 
+  async completionTemplate(taskId) {
+    const state = await this.#load();
+    const task = state.tasks.find(item => item.id === taskId);
+    if (!task || task.status !== 'running') throw new Error('Only a running task can be finished');
+    const profile = await this.profile(state.profile);
+    return {
+      task_id: task.id,
+      token: task.token,
+      stage: task.stage,
+      required_kinds: profile.required_artifacts?.[task.stage] || [],
+      existing_artifacts: task.artifacts || []
+    };
+  }
+
   async #enqueue(state, request, internal) {
     required(state, 'Run init before enqueue');
     if (request.workflow_id && request.workflow_id !== state.workflow_id) throw new Error('Workflow id mismatch');

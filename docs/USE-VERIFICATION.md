@@ -2,7 +2,13 @@
 
 A receipt means that an agent produced files. It does not prove that a researcher opened them or that a published video plays. The state machine records three separate levels: `generated`, `automated_verified`, and `use_verified`.
 
-For a plan or rendered video, find the task ID and exact artifact path/hash with `rok status --json`. Save a local JSON request and run:
+For a plan or rendered video, find the task ID with `rok status`. The guided form asks for real observations after the automatic checks:
+
+```bash
+rok verify-use <task-id>
+```
+
+For scripting, save a local JSON request and run:
 
 ```bash
 rok verify-use <task-id> <verification.json>

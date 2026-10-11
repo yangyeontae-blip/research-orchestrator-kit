@@ -2,7 +2,7 @@
 
 Research Orchestrator Kit is a Korean-first local CLI that turns a research idea into an evidence-traceable proposal. It supports explicit `generic`, APA 7, and JQI profiles, local PDF/HWP/HWPX processing, Markdown-to-DOCX/HWPX export, and optional OpenAI or Anthropic adapters.
 
-Version 0.4.0 distinguishes generated artifacts, passed automated checks, and verified end-user use. Plans cannot reach collection approval, and videos cannot be marked complete, until artifact-specific use checks are recorded.
+Version 0.4.1 distinguishes generated artifacts, passed automated checks, and verified end-user use. Plans cannot reach collection approval, and videos cannot be marked complete, until artifact-specific use checks are recorded.
 
 Five roles share files and SHA-256 bindings: orchestrator, study, research, literature, and video. Human gates bind collection approval to the plan, revision approval to the evidence report, and video approval to the plan, storyboard, and source map.
 
@@ -15,6 +15,8 @@ rok new
 rok status
 rok next
 ```
+
+Run `rok next` again to recover a pending handoff, then `rok finish <task-id>` to enter actual output paths interactively. `rok office` opens a local, read-only view of this project's workflow ledger only; it does not discover other AI sessions.
 
 Useful commands:
 

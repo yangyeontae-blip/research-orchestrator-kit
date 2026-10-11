@@ -5,7 +5,9 @@ Run commands from the project root or add `--root <path>`. `rok --help` prints t
 ## Researcher-facing commands
 
 - `rok new [--answers answers.json]`: asks for the idea, `generic`/APA 7/JQI profile, route, method, deadline, institution guidance, and sensitivity; creates `research-brief.json` and the first task.
-- `rok next`: claims and prepares the next queued task. API providers require an interactive `SEND` confirmation for every call.
+- `rok next`: claims the next queued task or re-shows a running handoff after interruption. API providers require an interactive `SEND` confirmation for every call.
+- `rok finish <task-id>`: interactively records status and actual artifact paths. The engine verifies file hashes; `rok complete` remains available for JSON receipts.
+- `rok office [--port N]`: local read-only dashboard for this kit's state. `--legacy-root` explicitly points it at one existing research project ledger; it never scans AI sessions.
 - `rok status [--json]`: shows stage, cycle, approvals, errors, and the optional video branch.
 - `rok literature search --query "..."`: queries Crossref and OpenAlex, deduplicates results, and updates the literature manifest.
 - `rok literature ingest <pdf|hwp|hwpx> [--id ID]`: validates and locally parses a lawfully held PDF with PDF.js, or an HWP/HWPX file with Kordoc. HWP/HWPX output has no automatic printed-page citation.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 - 2026-10-11
+
+- Added a local read-only pixel office that reads only the selected research workflow ledger and omits unrelated AI sessions and completed test jobs.
+- Bound question–data–analysis mappings and claim provenance to the current plan hash in automated quality checks; semantic and source verification remain human checks.
+- Restored running handoffs with `rok next` and added guided `rok finish` and `rok verify-use` while retaining JSON commands.
+
 ## 0.4.0 - 2026-10-11
 
 - Separated artifact creation, automated verification, and use verification for plans and rendered videos; downstream gates now wait for recorded use evidence.

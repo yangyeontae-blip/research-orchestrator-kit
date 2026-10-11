@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research question to data and analysis map",
+  "type": "object",
+  "required": ["schema_version", "project_id", "plan_sha256", "links"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "project_id": { "type": "string", "minLength": 1 },
+    "plan_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "links": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["question", "data_source", "analysis", "rationale"],
+        "properties": {
+          "question": { "type": "string", "minLength": 1 },
+          "data_source": { "type": "string", "minLength": 1 },
+          "analysis": { "type": "string", "minLength": 1 },
+          "rationale": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

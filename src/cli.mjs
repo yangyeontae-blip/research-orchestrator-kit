@@ -15,6 +15,7 @@ import { ingestLiteraturePdf } from './pdf.mjs';
 import { ingestLiteratureKoreanOffice } from './kordoc.mjs';
 import { exportPlanDocx, exportPlanHwpx } from './export.mjs';
 import { generateQualityReport, validateStandardArtifacts } from './quality.mjs';
+import { startOffice } from './office.mjs';
 
 const argv = process.argv.slice(2);
 const takeOption = (name, fallback = null) => {
@@ -46,6 +47,8 @@ const duration = Number(takeOption('--duration', '90'));
 const aspectRatio = takeOption('--aspect', '16:9');
 const notes = takeOption('--notes', '');
 const formatOption = takeOption('--format', null);
+const officePort = takeOption('--port', null);
+const legacyRoot = takeOption('--legacy-root', null);
 const jsonOutput = takeFlag('--json');
 const [command, ...args] = argv;
 const engine = new Engine(root);
@@ -54,7 +57,7 @@ const inputJson = async file => JSON.parse((await fs.readFile(path.resolve(root,
 async function dispatch(task, options = {}) {
   const { config, source } = await loadConfig(root);
   const agent = config.agents[task.role] || { provider: 'manual' };
-  if (agent.provider === 'codex') return { config: source, provider: 'codex', ...codexDispatch(task, agent) };
+  if (agent.provider === 'codex') return { config: source, provider: 'codex', ...codexDispatch(task, { ...agent, root }) };
   if (agent.provider === 'claude') return { config: source, provider: 'claude', ...(await claudeDispatch(root, task, agent)) };
   if (['openai_api', 'anthropic_api'].includes(agent.provider)) {
     if (!options.runApi) return { config: source, provider: agent.provider, requires: 'Use `rok next` for the mandatory per-call confirmation.' };
@@ -106,7 +109,14 @@ async function projectDir(status = null) {
 async function nextAction() {
   const status = await engine.status();
   const queued = status.tasks.filter(task => task.status === 'queued').sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
-  if (!queued.length) return { action: 'wait', message: humanStatus(status), status };
+  if (!queued.length) {
+    const pending = status.tasks.find(task => task.status === 'running');
+    if (pending) {
+      const template = await engine.completionTemplate(pending.id);
+      return { action: 'handoff_pending', task: pending, dispatch: await dispatch({ ...pending, token: template.token }), next: `rok finish ${pending.id}` };
+    }
+    return { action: 'wait', message: humanStatus(status), status };
+  }
   const task = await engine.claim(queued[0].id, claimant);
   try {
     const delivery = await dispatch(task, { runApi: true });
@@ -114,21 +124,87 @@ async function nextAction() {
       const completed = await engine.complete(delivery.receipt);
       return { action: 'api_completed', task: completed, cloud_summary: delivery.summary, status: await engine.status() };
     }
-    return { action: 'dispatched', task, dispatch: delivery };
+    return { action: 'handoff_ready', task, dispatch: delivery, next: `rok finish ${task.id}` };
   } catch (error) {
     await engine.complete({ schema_version: 1, task_id: task.id, token: task.token, status: 'failed', artifacts: [], reason: error.message }).catch(() => {});
     throw error;
   }
 }
 
+async function finishInteractive(taskId) {
+  const template = await engine.completionTemplate(taskId);
+  const rl = createInterface({ input: stdin, output: stdout });
+  try {
+    stdout.write(`작업 ${taskId} (${template.stage}) 결과를 기록합니다. 실제 생성한 파일만 입력하세요.\n`);
+    const status = (await rl.question('상태(completed/partial/failed): ')).trim();
+    if (!['completed', 'partial', 'failed'].includes(status)) throw new Error('상태는 completed, partial, failed 중 하나여야 합니다');
+    const artifacts = [];
+    if (status !== 'failed') {
+      for (const kind of template.required_kinds) {
+        const file = (await rl.question(`${kind} 파일 경로${status === 'partial' ? ' (없으면 빈칸)' : ''}: `)).trim();
+        if (file) artifacts.push({ kind, path: file });
+        else if (status === 'completed' && !template.existing_artifacts.some(item => item.kind === kind)) throw new Error(`${kind} 파일이 필요합니다`);
+      }
+    }
+    const reason = status === 'completed' ? '' : (await rl.question('부분 완료·실패 이유: ')).trim();
+    if (status !== 'completed' && !reason) throw new Error('부분 완료·실패 이유가 필요합니다');
+    return engine.complete({ schema_version: 1, task_id: taskId, token: template.token, status, artifacts, reason });
+  } finally { rl.close(); }
+}
+
+async function verifyUseInteractive(taskId) {
+  const status = await engine.status();
+  const task = status.tasks.find(item => item.id === taskId);
+  if (!task || !['plan', 'revise', 'video_render'].includes(task.stage)) throw new Error('실사용 검증 가능한 계획서·영상 작업을 선택하세요');
+  const kind = task.stage === 'video_render' ? 'video' : 'plan';
+  const artifact = task.artifacts.find(item => item.kind === (kind === 'video' ? 'video_file' : 'plan'));
+  if (!artifact) throw new Error('검증할 산출물이 없습니다');
+  const specification = { task_id: taskId, kind, artifact, project_dir: status.project_dir };
+  if (kind === 'video') {
+    const urlInput = createInterface({ input: stdin, output: stdout });
+    try {
+      specification.deployed_url = (await urlInput.question('영상 플레이어 HTTPS 주소: ')).trim();
+      specification.media_url = (await urlInput.question('MP4 HTTPS 주소: ')).trim();
+    } finally { urlInput.close(); }
+  }
+  const automatic = await engine.verifyUse(taskId, specification);
+  if (automatic.completion_level !== 'automated_verified') return automatic;
+  const names = kind === 'plan' ? [
+    ['evidence_source_checked', '핵심 인용·근거를 원출처에서 대조'],
+    ['method_alignment_reviewed', '연구질문별 자료·분석의 의미상 정합성 검토']
+  ] : [
+    ['browser_playback', '공개 주소에서 영상 재생'],
+    ['seeking', '재생 위치 이동'],
+    ['audio', '소리 직접 청취']
+  ];
+  const rl = createInterface({ input: stdin, output: stdout });
+  try {
+    stdout.write('자동검사 통과. 아래 항목은 직접 확인한 결과만 기록하세요.\n');
+    const verified_by = (await rl.question('확인자 이름 또는 식별자: ')).trim();
+    if (!verified_by || verified_by.toLowerCase() === String(task.claimant || '').trim().toLowerCase()) throw new Error('작업 담당자와 다른 확인자가 필요합니다');
+    const human_checks = [];
+    for (const [name, label] of names) {
+      const result = (await rl.question(`${label} (passed/failed/skip): `)).trim();
+      if (result === 'skip') continue;
+      if (!['passed', 'failed'].includes(result)) throw new Error('검사 결과는 passed, failed, skip 중 하나여야 합니다');
+      const method = (await rl.question('확인 방법: ')).trim();
+      const evidence = (await rl.question('실제 관찰 내용: ')).trim();
+      if (!method || !evidence) throw new Error('확인 방법과 관찰 내용이 필요합니다');
+      human_checks.push({ name, result, method, evidence, checked_at: new Date().toISOString() });
+    }
+    return engine.verifyUse(taskId, { ...specification, human_confirmation: { confirmed: true, verified_by, checked_at: new Date().toISOString() }, human_checks });
+  } finally { rl.close(); }
+}
+
 function usage() {
   return [
     'rok new [--answers answers.json]',
-    'rok next | status [--json] | validate [--project dir] [--plan file] | export [--format docx|hwpx] [--plan file] [--output file]',
+    'rok next | finish <task-id> | status [--json] | validate [--project dir] [--plan file] | export [--format docx|hwpx] [--plan file] [--output file]',
     'rok literature search --query "..." | rok literature ingest <pdf|hwp|hwpx> [--id literature-id]',
     'rok video request [--audience ... --duration 90 --aspect 16:9 --notes ...]',
+    'rok office [--port 4317] [--legacy-root "absolute project path"] (local read-only dashboard)',
     'rok init --profile generic|apa7|jqi | enqueue <request.json> | claim <task-id> | complete <receipt.json>',
-    'rok verify-use <task-id> <verification.json> | approve <collection|revision|video> <approval.json> | retry <task-id> [--root path]'
+    'rok verify-use <task-id> [verification.json] | approve <collection|revision|video> <approval.json> | retry <task-id> [--root path]'
   ].join('\n');
 }
 
@@ -141,6 +217,13 @@ try {
     const answers = answersFile ? await inputJson(answersFile) : await promptResearchBrief();
     result = await createResearchProject(root, answers);
   } else if (command === 'next') result = await nextAction();
+  else if (command === 'office') {
+    const port = officePort == null ? 0 : Number(officePort);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('--port must be an integer from 0 to 65535');
+    const office = await startOffice(root, { port, legacyRoot: legacyRoot ? path.resolve(legacyRoot) : undefined });
+    stdout.write(`ROK 픽셀 작업실: ${office.url}\n종료하려면 Ctrl+C를 누르세요.\n`);
+    await new Promise(() => {});
+  }
   else if (command === 'init') {
     if (!profile) throw new Error('Select a research-plan profile explicitly: --profile generic|apa7|jqi');
     result = await engine.init({ profile });
@@ -149,8 +232,9 @@ try {
     const task = await engine.claim(args[0], claimant);
     result = { task, dispatch: await dispatch(task), token: task.token };
   } else if (command === 'complete') result = await engine.complete(await inputJson(args[0]));
+  else if (command === 'finish') result = await finishInteractive(args[0]);
   else if (command === 'approve') result = await engine.approve(args[0], await inputJson(args[1]));
-  else if (command === 'verify-use') result = await engine.verifyUse(args[0], await inputJson(args[1]));
+  else if (command === 'verify-use') result = args[1] ? await engine.verifyUse(args[0], await inputJson(args[1])) : await verifyUseInteractive(args[0]);
   else if (command === 'status') result = await engine.status();
   else if (command === 'retry') result = await engine.retry(args[0]);
   else if (command === 'literature' && args[0] === 'search') {

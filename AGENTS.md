@@ -54,6 +54,8 @@
 ## CLI
 - `rok new`
 - `rok next`
+- `rok finish <task-id>`
+- `rok office`
 - `rok validate`
 - `rok export`
 - `rok literature search --query "..."`
@@ -63,7 +65,7 @@
 - `node src/cli.mjs enqueue <request.json>`
 - `node src/cli.mjs claim <task-id> --agent <name>`
 - `node src/cli.mjs complete <receipt.json>`
-- `rok verify-use <task-id> <verification.json>`
+- `rok verify-use <task-id> [verification.json]`
 - `rok approve <collection|revision|video> <approval.json>`
 - `node src/cli.mjs status`
 - `node src/cli.mjs retry <task-id>`

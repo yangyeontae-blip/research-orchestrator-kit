@@ -2,7 +2,7 @@ import { buildHandoff } from '../handoff.mjs';
 export function manualDispatch(task) {
   return {
     provider: 'manual',
-    instruction: `Give task ${task.id} to the ${task.role} agent and complete it with a receipt JSON.`,
+    instruction: `Give task ${task.id} (token ${task.token}) to the ${task.role} agent. Record actual files with rok finish ${task.id}, or submit a receipt JSON.`,
     handoff: buildHandoff(task)
   };
 }

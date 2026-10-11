@@ -40,13 +40,42 @@ export async function generateQualityReport(root, projectDir, planPath, options 
   const project = path.resolve(root, projectDir);
   const plan = path.resolve(root, planPath);
   const text = await fs.readFile(plan, 'utf8');
+  const planSha = await sha256File(plan);
   const brief = await readJson(path.join(project, 'research-brief.json'));
   const ledgerPath = path.join(project, 'claim-ledger.json');
   const ledger = await exists(ledgerPath) ? await readJson(ledgerPath) : { claims: [] };
   const literaturePath = path.join(project, 'literature-manifest.json');
   const literature = await exists(literaturePath) ? await readJson(literaturePath) : { items: [] };
+  const designPath = path.join(project, 'research-design.json');
+  let design = null;
+  let designError = '연구문제별 자료·분석 대응표 없음';
+  if (await exists(designPath)) {
+    try {
+      design = await readJson(designPath);
+      await new SchemaRegistry(root).assert('research-design', design);
+      if (design.project_id !== brief.project_id || design.plan_sha256 !== planSha) throw new Error('프로젝트 또는 계획서 해시 불일치');
+      const normalized = value => String(value).replace(/\s+/g, ' ').trim();
+      const planText = normalized(text);
+      if (!design.links.every(link => [link.question, link.data_source, link.analysis].every(value => planText.includes(normalized(value))))) {
+        throw new Error('대응표의 질문·자료·분석 문구를 계획서에서 찾지 못함');
+      }
+      designError = '';
+    } catch (error) { design = null; designError = error.message; }
+  }
   const pairs = citationPairs(text);
-  const claimsMarked = ledger.claims.length > 0 && ledger.claims.every(item => evidenceLabels[item.verification_status] && item.verification_status !== 'unverified');
+  const literatureById = new Map(literature.items.map(item => [item.id, item]));
+  const claimsMarked = ledger.plan_sha256 === planSha && ledger.claims.length > 0 && ledger.claims.every(item =>
+    evidenceLabels[item.verification_status] && item.verification_status !== 'unverified'
+    && item.plan_location?.trim() && text.includes(item.plan_location.trim())
+    && item.literature_ids.length > 0 && item.evidence_locations.length > 0
+    && item.literature_ids.every(id => {
+      const source = literatureById.get(id);
+      if (source?.decision !== 'selected') return false;
+      return item.verification_status === 'metadata_only'
+        || ['pdf_ingested', 'hwp_ingested', 'hwpx_ingested'].includes(source.verification);
+    })
+  );
+  const metadataOnlyCount = ledger.claims.filter(item => item.verification_status === 'metadata_only').length;
   const questions = section(text, /연구\s*문제|연구\s*질문|research questions?/i);
   const data = section(text, /자료\s*수집|자료원|participants?|data sources?|sampling/i);
   const analysis = section(text, /자료\s*분석|분석\s*방법|analysis/i);
@@ -60,9 +89,9 @@ export async function generateQualityReport(root, projectDir, planPath, options 
       : true;
   const checks = [
     check('question_scope', '연구질문·대상·범위', questions, questions ? '연구질문 표지를 찾음' : '연구질문 표지를 찾지 못함'),
-    check('method_alignment', '연구질문–자료–분석 정합성 필드', questions && data && analysis, `질문=${questions}, 자료=${data}, 분석=${analysis}`),
-    check('evidence_status', '핵심 주장 근거 상태', claimsMarked, ledger.claims.length ? `${ledger.claims.length}개 주장 상태 표시` : '근거 장부가 비어 있음'),
-    check('citation_reference', '본문 인용–참고문헌 대응', references && pairs.missingReferences.length === 0 && pairs.uncitedReferences.length === 0, `누락=${pairs.missingReferences.length}, 미인용=${pairs.uncitedReferences.length}`),
+    check('method_alignment', '연구질문별 자료·분석 대응 기록', questions && data && analysis && Boolean(design), design ? `${design.links.length}개 질문 대응표·계획서 해시·본문 문구 일치 (의미상 정합성은 사람 검토 필요)` : designError),
+    check('evidence_status', '핵심 주장 출처 연결·버전', claimsMarked, claimsMarked ? `${ledger.claims.length}개 주장 연결, 메타데이터만 확인 ${metadataOnlyCount}개; 원문 타당성은 별도 검토` : '근거 장부의 계획서 해시, 주장 위치, 선정 문헌 ID 또는 확인 위치가 누락·불일치'),
+    check('citation_reference', '본문 인용–참고문헌 대응', references && pairs.citations.length > 0 && pairs.references.length > 0 && pairs.missingReferences.length === 0 && pairs.uncitedReferences.length === 0, `본문 인용=${pairs.citations.length}, 참고문헌=${pairs.references.length}, 누락=${pairs.missingReferences.length}, 미인용=${pairs.uncitedReferences.length}`),
     check('feasibility', '실행 가능성·일정', feasibility, brief.deadline ? `마감일 ${brief.deadline}` : '마감일 미정'),
     check('ethics', '연구윤리·민감정보', ethics || !brief.sensitive_information, ethics ? '윤리 표지를 찾음' : '민감정보 없음으로 응답됨'),
     check('profile_format', `${brief.profile} 형식 필수 요소`, profileFormat, profileFormat ? '자동 형식 표지 통과' : '필수 형식 표지 누락'),
@@ -73,13 +102,14 @@ export async function generateQualityReport(root, projectDir, planPath, options 
     schema_version: 1,
     project_id: brief.project_id,
     profile: brief.profile,
-    plan: { path: slash(path.relative(root, plan)), sha256: await sha256File(plan) },
+    plan: { path: slash(path.relative(root, plan)), sha256: planSha },
     automated: {
       score,
       hard_checks_passed: checks.every(item => item.passed),
       checks,
       limitations: [
-        '자동 검사는 제목과 장부의 존재·대응만 확인하며 연구의 학술적 타당성을 판정하지 않는다.',
+        '자동 검사는 대응표 문구·출처 연결·인용의 기계적 일치만 확인하며 연구의 학술적 타당성을 판정하지 않는다.',
+        '메타데이터만 확인한 문헌은 원문 근거로 승격하지 않는다. 인용 파서는 복잡한 인용 형식을 모두 다루지 못하므로 사람이 재검토한다.',
         'AI 평가와 사람 평가는 별도 필드이며 자동 점수에 포함되지 않는다.',
         '원문 확인 상태는 사람이 원문과 위치를 대조한 뒤에만 올릴 수 있다.'
       ]

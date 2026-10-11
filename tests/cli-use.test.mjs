@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { Engine } from '../src/engine.mjs';
 import { toolkitFixture, sourceRoot } from './helpers.mjs';
 
@@ -44,4 +44,49 @@ test('CLI holds the collection gate until a separate reviewer verifies the plan'
   assert.equal(reviewed.status, 0, reviewed.stderr);
   assert.equal(JSON.parse(reviewed.stdout).completion_level, 'use_verified');
   assert.equal((await engine.status()).current_stage, 'collection_approval');
+});
+
+test('CLI next recovers a running handoff with its completion action', async t => {
+  const root = await toolkitFixture(t);
+  const project = path.join(root, 'workspace', 'resume');
+  await fs.mkdir(project, { recursive: true });
+  await fs.writeFile(path.join(project, 'input.md'), 'Synthetic study idea');
+  const engine = new Engine(root);
+  const state = await engine.init({ profile: 'generic', project_dir: 'workspace/resume' });
+  const task = await engine.enqueue({ request_id: 'resume-plan', workflow_id: state.workflow_id, stage: 'plan', inputs: [{ path: 'workspace/resume/input.md' }] });
+  await engine.claim(task.id, 'research-agent');
+  const run = spawnSync(process.execPath, [path.join(sourceRoot, 'src', 'cli.mjs'), 'next', '--root', root], { cwd: root, encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  const result = JSON.parse(run.stdout);
+  assert.equal(result.action, 'handoff_pending');
+  assert.equal(result.next, `rok finish ${task.id}`);
+  assert.match(JSON.stringify(result.dispatch), new RegExp(task.id));
+  assert.equal((await engine.status()).tasks.find(item => item.id === task.id).status, 'running');
+});
+
+test('CLI finish records a real plan through guided prompts', async t => {
+  const root = await toolkitFixture(t);
+  const project = path.join(root, 'workspace', 'guided');
+  await fs.mkdir(project, { recursive: true });
+  await fs.writeFile(path.join(project, 'input.md'), 'Synthetic idea');
+  await fs.writeFile(path.join(project, 'plan.md'), '# Synthetic plan');
+  const engine = new Engine(root);
+  const state = await engine.init({ profile: 'generic', project_dir: 'workspace/guided' });
+  const task = await engine.enqueue({ request_id: 'guided-plan', workflow_id: state.workflow_id, stage: 'plan', inputs: [{ path: 'workspace/guided/input.md' }] });
+  await engine.claim(task.id, 'research-agent');
+  const output = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [path.join(sourceRoot, 'src', 'cli.mjs'), 'finish', task.id, '--root', root], { cwd: root, stdio: 'pipe' });
+    let stdout = '', stderr = '', sentStatus = false, sentPlan = false;
+    const timer = setTimeout(() => { child.kill(); reject(new Error('guided finish timed out')) }, 10000);
+    child.stdout.on('data', chunk => {
+      stdout += chunk;
+      if (!sentStatus && stdout.includes('상태(completed/partial/failed):')) { sentStatus = true; child.stdin.write('completed\n'); }
+      if (!sentPlan && stdout.includes('plan 파일 경로')) { sentPlan = true; child.stdin.write('workspace/guided/plan.md\n'); }
+    });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.on('error', reject);
+    child.on('close', code => { clearTimeout(timer); code === 0 ? resolve(stdout) : reject(new Error(`exit ${code}: ${stderr} ${stdout}`)); });
+  });
+  assert.match(output, /"status": "completed"/);
+  assert.equal((await engine.status()).current_stage, 'plan_use_verification');
 });

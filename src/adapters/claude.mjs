@@ -12,6 +12,8 @@ export async function claudeDispatch(root, task, agentConfig = {}) {
   const payload = {
     schema_version: 1,
     task_id: task.id,
+    token: task.token,
+    workspace_root: root,
     workflow_id: task.workflow_id,
     role: task.role,
     stage: task.stage,

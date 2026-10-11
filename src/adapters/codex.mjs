@@ -11,6 +11,8 @@ export function codexDispatch(task, agentConfig = {}) {
       `Role: ${task.role}`,
       `Stage: ${task.stage}`,
       `Cycle: ${task.cycle}`,
+      `Task token: ${task.token}`,
+      `Workspace root: ${agentConfig.root || 'the configured project root'}`,
       `Goal: ${handoff.goal}`,
       `User decisions: ${handoff.user_decisions.length ? handoff.user_decisions.join(' | ') : 'None recorded'}`,
       `Input versions: ${handoff.input_versions.map(item => `${item.path} (${item.sha256})`).join(', ')}`,
