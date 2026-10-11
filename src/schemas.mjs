@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
+import { toolkitPath } from './utils.mjs';
 
 export class SchemaRegistry {
   constructor(root) {
@@ -13,7 +14,7 @@ export class SchemaRegistry {
 
   async validator(name) {
     if (this.cache.has(name)) return this.cache.get(name);
-    const schema = JSON.parse(await fs.readFile(path.join(this.root, 'schemas', `${name}.schema.json`), 'utf8'));
+    const schema = JSON.parse(await fs.readFile(await toolkitPath(this.root, 'schemas', `${name}.schema.json`), 'utf8'));
     const validate = this.ajv.compile(schema);
     this.cache.set(name, validate);
     return validate;

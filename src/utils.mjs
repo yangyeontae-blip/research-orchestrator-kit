@@ -1,8 +1,15 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 export const exists = target => fs.access(target).then(() => true, () => false);
+export const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// Project-local profiles/schemas override the bundled ones, so `rok` also works outside the kit checkout.
+export async function toolkitPath(root, directory, file) {
+  const local = path.join(path.resolve(root), directory, file);
+  return await exists(local) ? local : path.join(packageRoot, directory, file);
+}
 export const sha256Bytes = bytes => createHash('sha256').update(bytes).digest('hex');
 export const sha256File = async target => sha256Bytes(await fs.readFile(target));
 export const isoNow = () => new Date().toISOString();

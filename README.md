@@ -112,7 +112,19 @@ rok status
 
 계획서나 영상 작업의 receipt를 제출한 뒤에는 `rok status`에 검증 대기가 표시됩니다. 먼저 `rok validate` 등 자동검사를 마친 다음 `rok verify-use <작업 ID>`의 질문에 직접 확인한 내용만 답합니다. 기존 JSON 방식도 유지됩니다. 확인하지 못한 항목은 통과로 적지 않습니다. 입력 형식과 산출물별 확인 방법은 [실사용 검증 안내](docs/USE-VERIFICATION.md)에 있습니다.
 
+승인(`rok approve`), 사람 실사용 검증, 재작업 요청(`rok rework`)은 사람의 결정이므로 대화형 터미널에서만 기록됩니다. 에이전트의 비대화형 셸에서 실행하면 거부됩니다. 파일 없이 `rok approve collection`처럼 실행하면 현재 해시로 승인서를 만들고 `APPROVE` 입력을 받습니다. 수집 관문의 자동 점수는 승인서가 아니라 현재 계획서 해시에 묶인 `quality-report.json`에서만 읽습니다.
+
+막혔을 때:
+
+- 계획서·검토 보고서·스토리보드를 고쳐야 하면 `rok rework <작업 ID> --feedback "..."`로 돌려보냅니다.
+- 근거 반영 항목을 모두 반려하면 같은 계획서로 새 수집 회차가 열립니다.
+- 에이전트가 응답 없이 사라졌으면 `rok release <작업 ID> --reason "..."` 뒤 `rok retry <작업 ID>`를 실행합니다. 맡은 작업은 기본 72시간(`config.local.json`의 `lease_hours`) 뒤 같은 역할의 다음 작업이 가져갈 수 있습니다.
+- 입력 파일을 고친 뒤 재시도하려면 `rok retry <작업 ID> --rebind`를 씁니다. 승인에 묶인 계획서·보고서는 다시 묶지 않습니다.
+- 비정상 종료로 남은 `state.lock`은 다음 명령이 자동으로 정리합니다.
+
 ### 4. 문헌 검색과 사용자 문서 등록
+
+문헌 검색과 등록은 현재 계획서에 대한 수집 승인 뒤, 문헌 작업이 열려 있을 때만 실행됩니다.
 
 ```bash
 rok literature search --query "teacher identity qualitative interview"

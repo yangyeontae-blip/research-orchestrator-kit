@@ -21,13 +21,25 @@ Run commands from the project root or add `--root <path>`. `rok --help` prints t
 - `rok enqueue <request.json>`
 - `rok claim <task-id> --agent <name>`
 - `rok complete <receipt.json>`
-- `rok approve collection <approval.json>`
-- `rok approve revision <approval.json>`
-- `rok approve video <approval.json>`
-- `rok retry <task-id>`
+- `rok approve collection [approval.json]`
+- `rok approve revision [approval.json]` (`"approved_items": [], "decline_all": true` keeps the plan and opens a new collection round)
+- `rok approve video [approval.json]`
+- `rok retry <task-id> [--rebind]`
 
 Claims enforce one running task per role. Partial results retain successful artifacts. Approvals bind exact SHA-256 values and become invalid when their source changes.
 
+## Human decisions and recovery
+
+- `rok approve`, `rok verify-use` with human checks, and `rok rework` run only in an interactive terminal and ask for a typed confirmation (`APPROVE`, `VERIFIED`, `REWORK`). Non-interactive shells, including agent tool calls, are refused. The engine API itself stays scriptable for tests and trusted automation.
+- Collection-gate scores and hard checks are read from `quality-report.json` bound to the current plan hash; only the JQI human rubric total comes from the approval.
+- `rok literature search|ingest` require an open literature task whose collection approval matches the current plan hash.
+- `rok rework <task-id> [--feedback "..."]` sends a plan or revision (pending use verification or collection approval), a review report (pending revision approval), a storyboard, or a render back with feedback.
+- `rok release <task-id> [--reason "..."]` fails a running task that will never report back, so it can be retried. Failed and partial receipts are accepted even when an input changed under the agent; the mismatch is recorded as `binding_warning`.
+- Claims carry a lease (`lease_hours` in `config.local.json`, default 72). An expired task is failed when another task for the same role is claimed, and `rok status` flags it.
+- `rok retry <task-id> --rebind` re-hashes changed free inputs of a failed, partial, or queued task. Approval-bound plans and reports are never rebound.
+- A `state.lock` left by a crashed process (dead PID on this host, or older than two minutes) is removed automatically; a live lock is waited on for up to ten seconds.
+- Profiles, schemas, and the example config fall back to the copies bundled with the package, so `rok` works in a project directory outside this repository.
+
 ## Providers
 
-`manual`, `codex`, and `claude` create a human-readable or file handoff. `openai_api` and `anthropic_api` are optional. API keys come only from environment variables; cloud logs store hashes, model, usage, request ID, and time rather than content. Source PDFs and generated office documents are blocked from cloud transfer.
+`manual`, `codex`, and `claude` create a human-readable or file handoff. `openai_api` and `anthropic_api` are optional. API keys come only from environment variables; cloud logs store hashes, model, usage, request ID, and time rather than content. Source PDFs and generated office documents are blocked from cloud transfer. API artifacts are written only to a new per-task directory (`<project>/tasks/<task-id>/`) and never overwrite existing files. Calls time out after `timeout_ms` (default 180000) without a silent repeat, and rate-limit or server errors are retried up to `max_retries` times (default 2).

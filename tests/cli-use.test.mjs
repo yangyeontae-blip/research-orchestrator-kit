@@ -40,9 +40,25 @@ test('CLI holds the collection gate until a separate reviewer verifies the plan'
       { name: 'method_alignment_reviewed', result: 'passed', evidence: 'Synthetic method inspected', method: 'fixture comparison', checked_at }
     ]
   }));
+  // Human checks are refused from a non-interactive shell such as an agent's tool call.
   const reviewed = run('workspace/cli/reviewed.json');
-  assert.equal(reviewed.status, 0, reviewed.stderr);
-  assert.equal(JSON.parse(reviewed.stdout).completion_level, 'use_verified');
+  assert.notEqual(reviewed.status, 0);
+  assert.match(reviewed.stderr, /interactive terminal/);
+  assert.equal((await engine.status()).current_stage, 'plan_use_verification');
+  await engine.verifyUse(task.id, JSON.parse(await fs.readFile(path.join(project, 'reviewed.json'), 'utf8')));
+  assert.equal((await engine.status()).current_stage, 'collection_approval');
+
+  await fs.writeFile(path.join(project, 'approval.json'), JSON.stringify({ workflow_id: state.workflow_id, human_confirmed: true, approved_by: 'pi', plan }));
+  const cliRun = (...rest) => spawnSync(process.execPath, [cli, ...rest, '--root', root], { cwd: root, encoding: 'utf8' });
+  const approve = cliRun('approve', 'collection', 'workspace/cli/approval.json');
+  assert.notEqual(approve.status, 0);
+  assert.match(approve.stderr, /interactive terminal/);
+  const rework = cliRun('rework', task.id, '--feedback', 'tighten scope');
+  assert.notEqual(rework.status, 0);
+  assert.match(rework.stderr, /interactive terminal/);
+  const search = cliRun('literature', 'search', '--query', 'synthetic');
+  assert.notEqual(search.status, 0);
+  assert.match(search.stderr, /approved, open literature task/);
   assert.equal((await engine.status()).current_stage, 'collection_approval');
 });
 

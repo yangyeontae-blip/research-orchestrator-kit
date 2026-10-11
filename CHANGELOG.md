@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Failed and partial receipts are accepted even after an input changed; added `rok release`, claim leases, and `rok retry --rebind` so no task can stay running or queued forever.
+- Stale `state.lock` files from crashed processes are recovered automatically, and concurrent commands wait briefly instead of failing.
+- Added `rok rework` for plans, revisions, review reports, storyboards, and renders, and allowed declining every review item to start a new collection round.
+- Approvals, human use checks, and rework now require an interactive terminal; collection-gate scores are read from the plan-bound quality report; literature search and ingest require an approved collection.
+- Bundled profiles, schemas, and the example config are used when the project directory has none.
+- API adapters write to a fresh per-task directory without overwriting, validate the receipt before writing, escape document boundaries, and add timeouts and bounded retries.
+
 ## 0.4.1 - 2026-10-11
 
 - Added a local read-only pixel office that reads only the selected research workflow ledger and omits unrelated AI sessions and completed test jobs.

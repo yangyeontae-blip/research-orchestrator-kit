@@ -1,8 +1,10 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { SchemaRegistry } from './schemas.mjs';
 import { verifyArtifactUse } from './use-verification.mjs';
+import { toolkitPath } from './utils.mjs';
 
 export const ROLE_FOR_STAGE = Object.freeze({
   study: 'study',
@@ -17,6 +19,10 @@ export const ROLE_FOR_STAGE = Object.freeze({
 const TERMINAL = new Set(['completed', 'partial', 'failed']);
 const RECEIPT_STATUSES = new Set(['completed', 'partial', 'failed']);
 const USE_VERIFICATION_STAGES = new Set(['plan', 'revise', 'video_render']);
+const LOCK_WAIT_MS = 10_000;
+// State transactions take milliseconds; an older lock was left behind by a crashed process.
+const STALE_LOCK_MS = 120_000;
+const DEFAULT_LEASE_MS = 72 * 60 * 60 * 1000;
 const slash = value => value.split(path.sep).join('/');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const now = () => new Date().toISOString();
@@ -28,18 +34,30 @@ function required(value, message) {
   return value;
 }
 
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
+  }
+}
+
+const leaseExpired = task => task.status === 'running' && Boolean(task.lease_expires_at) && Date.parse(task.lease_expires_at) <= Date.now();
+
 export class Engine {
   constructor(root, options = {}) {
     this.root = path.resolve(root);
     this.workDir = path.resolve(this.root, options.workDirName || '.research-work');
     this.statePath = path.join(this.workDir, 'state.json');
     this.lockPath = path.join(this.workDir, 'state.lock');
+    this.leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
   }
 
   async profile(id) {
     const safe = String(id || '').match(/^[a-z0-9_-]+$/i)?.[0];
     if (!safe) throw new Error('Invalid profile id');
-    const target = path.join(this.root, 'profiles', safe + '.json');
+    const target = await toolkitPath(this.root, 'profiles', safe + '.json');
     if (!await exists(target)) throw new Error(`Profile not found: ${safe}`);
     const profile = await readJson(target);
     if (profile.id !== safe || profile.schema_version !== 1) throw new Error('Invalid profile document');
@@ -100,14 +118,14 @@ export class Engine {
     return this.#transaction(async state => {
       const task = state.tasks.find(item => item.id === taskId);
       if (!task || task.status !== 'queued') throw new Error('Task is not available to claim');
-      if (state.tasks.some(item => item.id !== task.id && item.role === task.role && item.status === 'running')) {
-        throw new Error(`Role is busy: ${task.role}`);
-      }
+      this.#expireLeases(state, task.role);
+      this.#assertRoleFree(state, task);
       await this.#verifyTaskBindings(state, task);
       task.status = 'running';
       task.claimant = claimant;
       task.token = randomUUID();
       task.claimed_at = now();
+      task.lease_expires_at = new Date(Date.now() + this.leaseMs).toISOString();
       if (task.branch !== 'video') state.current_stage = task.stage;
       state.history.push({ event: 'claimed', task_id: task.id, stage: task.stage, role: task.role, at: now() });
       return { ...task };
@@ -119,7 +137,16 @@ export class Engine {
       const task = state.tasks.find(item => item.id === receipt.task_id);
       if (!task || task.status !== 'running' || task.token !== receipt.token) throw new Error('Task token or running state does not match');
       if (!RECEIPT_STATUSES.has(receipt.status)) throw new Error('Receipt status must be completed, partial, or failed');
-      await this.#verifyTaskBindings(state, task);
+      if (receipt.status === 'completed') await this.#verifyTaskBindings(state, task);
+      else {
+        // A failure report is always accepted, even when an input changed under the agent.
+        try {
+          await this.#verifyTaskBindings(state, task);
+          task.binding_warning = null;
+        } catch (error) {
+          task.binding_warning = error.message;
+        }
+      }
       const incoming = [];
       for (const item of receipt.artifacts || []) incoming.push(await this.artifact(item));
       task.artifacts = this.#mergeArtifacts(task.artifacts || [], incoming);
@@ -129,6 +156,7 @@ export class Engine {
       if (receipt.status === 'failed' || receipt.status === 'partial') {
         if (!task.reason) throw new Error(`${receipt.status} receipts require a reason`);
         task.status = receipt.status;
+        task.token = null;
         if (task.branch === 'video') state.branches.video = { ...state.branches.video, status: `${task.stage}_${receipt.status}`, task_id: task.id };
         else state.current_stage = `${task.stage}_${receipt.status}`;
         state.errors.push({ task_id: task.id, stage: task.stage, status: receipt.status, reason: task.reason, at: now() });
@@ -227,17 +255,17 @@ export class Engine {
 
       if (kind === 'collection') {
         if (state.current_stage !== 'collection_approval') throw new Error('Workflow is not waiting for collection approval');
-        await this.#validateCollectionGate(state, approval);
+        const quality = await this.#validateCollectionGate(state, approval, plan);
         state.approvals.collection = {
           id: approval.approval_id || randomUUID(),
           plan_sha256: plan.sha256,
           approved_by: approval.approved_by || 'human',
-          quality: approval.quality || null,
+          quality,
           approved_at: now()
         };
         state.approvals.revision = null;
         const task = await this.#enqueue(state, {
-          request_id: `literature-${state.cycle}`,
+          request_id: `literature-${state.cycle}-${plan.sha256.slice(0, 12)}`,
           workflow_id: state.workflow_id,
           stage: 'literature',
           inputs: [plan],
@@ -250,9 +278,29 @@ export class Engine {
       }
 
       if (state.current_stage !== 'revision_approval') throw new Error('Workflow is not waiting for revision approval');
-      if (!Array.isArray(approval.approved_items) || approval.approved_items.length === 0) throw new Error('Revision approval requires at least one approved item');
+      const declineAll = approval.decline_all === true;
+      if (!Array.isArray(approval.approved_items)) throw new Error('Revision approval requires approved_items');
+      if (declineAll && approval.approved_items.length > 0) throw new Error('decline_all cannot be combined with approved items');
+      if (!declineAll && approval.approved_items.length === 0) throw new Error('Revision approval requires at least one approved item, or decline_all: true');
       const report = await this.artifact(required(approval.report, 'Review report binding is required'), 'review_report');
       this.#sameBinding(report, state.artifacts.review_report, 'Review report version does not match the current workflow');
+      if (declineAll) {
+        // Keep the current plan and open a new collection round for it.
+        state.approvals.revision = {
+          id: approval.approval_id || randomUUID(),
+          plan_sha256: plan.sha256,
+          report_sha256: report.sha256,
+          approved_items: [],
+          declined_all: true,
+          approved_by: approval.approved_by || 'human',
+          approved_at: now()
+        };
+        state.approvals.collection = null;
+        state.cycle += 1;
+        state.current_stage = 'collection_approval';
+        state.history.push({ event: 'revision_declined', report_sha256: report.sha256, at: now() });
+        return { approval: state.approvals.revision, task: null };
+      }
       state.approvals.revision = {
         id: approval.approval_id || randomUUID(),
         plan_sha256: plan.sha256,
@@ -262,7 +310,7 @@ export class Engine {
         approved_at: now()
       };
       const task = await this.#enqueue(state, {
-        request_id: `revise-${state.cycle}`,
+        request_id: `revise-${state.cycle}-${report.sha256.slice(0, 12)}`,
         workflow_id: state.workflow_id,
         stage: 'revise',
         inputs: [plan, report],
@@ -310,24 +358,126 @@ export class Engine {
     });
   }
 
-  async retry(taskId) {
+  async retry(taskId, options = {}) {
     return this.#transaction(async state => {
       const task = state.tasks.find(item => item.id === taskId);
-      if (!task || !['partial', 'failed'].includes(task.status)) throw new Error('Only partial or failed tasks can be retried');
-      if (state.tasks.some(item => item.id !== task.id && item.role === task.role && item.status === 'running')) throw new Error(`Role is busy: ${task.role}`);
+      const queuedRebind = options.rebind && task?.status === 'queued';
+      if (!task || !(['partial', 'failed'].includes(task.status) || queuedRebind)) {
+        throw new Error('Only partial or failed tasks can be retried (queued tasks only with --rebind)');
+      }
+      this.#expireLeases(state, task.role);
+      if (!queuedRebind) this.#assertRoleFree(state, task);
       task.attempts ||= [];
-      task.attempts.push({ status: task.status, reason: task.reason, artifacts: task.artifacts || [], ended_at: task.completed_at });
+      const attempt = { status: task.status, reason: task.reason, artifacts: task.artifacts || [], ended_at: task.completed_at };
+      if (options.rebind) {
+        // Approval-bound files must go back through their gate; only free inputs are re-hashed.
+        for (const [binding, label] of [[task.plan, 'plan'], [task.report, 'review report']]) {
+          if (!binding) continue;
+          await this.artifact(binding).catch(() => {
+            throw new Error(`The approved ${label} changed; restore ${binding.path} or request rework instead of rebinding`);
+          });
+        }
+        const bound = new Set([task.plan, task.report].filter(Boolean).map(item => `${item.path}|${item.sha256}`));
+        const inputs = [];
+        for (const input of task.inputs) {
+          inputs.push(bound.has(`${input.path}|${input.sha256}`) ? input : await this.artifact({ kind: input.kind, path: input.path }));
+        }
+        attempt.inputs = task.inputs;
+        task.inputs = inputs;
+        task.artifacts = [];
+      }
+      task.attempts.push(attempt);
       task.status = 'queued';
       task.reason = null;
+      task.binding_warning = null;
       task.claimant = null;
       task.token = null;
       task.claimed_at = null;
+      task.lease_expires_at = null;
       task.completed_at = null;
       if (task.branch === 'video') state.branches.video = { ...state.branches.video, status: task.stage, task_id: task.id };
       else state.current_stage = task.stage;
-      state.history.push({ event: 'retried', task_id: task.id, stage: task.stage, at: now() });
+      state.history.push({ event: 'retried', task_id: task.id, stage: task.stage, rebind: Boolean(options.rebind), at: now() });
       return this.#publicTask(task);
     });
+  }
+
+  async release(taskId, reason = '') {
+    return this.#transaction(async state => {
+      const task = state.tasks.find(item => item.id === taskId);
+      if (!task || task.status !== 'running') throw new Error('Only a running task can be released');
+      this.#failTask(state, task, String(reason).trim() || 'Released by the user before completion', 'released');
+      return this.#publicTask(task);
+    });
+  }
+
+  async rework(taskId, request = {}) {
+    const feedback = String(request.feedback || '').trim();
+    if (!feedback) throw new Error('Rework requires feedback describing what must change');
+    return this.#transaction(async state => {
+      const task = state.tasks.find(item => item.id === taskId);
+      if (!task || task.status !== 'completed') throw new Error('Only a completed task can be sent back for rework');
+      if (task.superseded_by) throw new Error(`Task was already sent back for rework: ${task.superseded_by}`);
+      const requestedBy = request.requested_by || 'human';
+      let next;
+      if (['plan', 'revise'].includes(task.stage)) {
+        const plan = this.#findArtifact(task, 'plan');
+        const awaitingUse = state.current_stage === `${task.stage}_use_verification` && task.completion_level !== 'use_verified';
+        const awaitingCollection = state.current_stage === 'collection_approval' && state.artifacts.plan?.sha256 === plan.sha256;
+        if (!awaitingUse && !awaitingCollection) throw new Error('Plan rework is possible only while its use verification or collection approval is pending');
+        // A rework is a fresh plan task, so it does not depend on the earlier revision approval.
+        next = { stage: 'plan', inputs: [...task.inputs, plan] };
+        state.approvals.collection = null;
+        state.approvals.revision = null;
+      } else if (task.stage === 'review') {
+        const report = this.#findArtifact(task, 'review_report');
+        if (state.current_stage !== 'revision_approval' || state.artifacts.review_report?.sha256 !== report.sha256) {
+          throw new Error('Review rework is possible only while its revision approval is pending');
+        }
+        next = { stage: 'review', inputs: task.inputs, plan: task.plan };
+        state.approvals.revision = null;
+      } else if (task.stage === 'video_storyboard') {
+        if (state.branches.video?.status !== 'storyboard_approval' || state.branches.video.task_id !== task.id) {
+          throw new Error('Storyboard rework is possible only while its approval is pending');
+        }
+        next = { stage: 'video_storyboard', branch: 'video', inputs: task.inputs, plan: task.plan };
+        state.approvals.video = null;
+      } else if (task.stage === 'video_render') {
+        if (state.branches.video?.status !== 'use_verification' || state.branches.video.task_id !== task.id) {
+          throw new Error('Render rework is possible only while its use verification is pending');
+        }
+        next = { stage: 'video_render', branch: 'video', inputs: task.inputs, plan: task.plan };
+      } else throw new Error(`Rework is not supported for stage: ${task.stage}`);
+      const round = state.tasks.filter(item => item.rework_of === task.id).length + 1;
+      const created = await this.#enqueue(state, {
+        ...next,
+        request_id: `${next.stage}-rework-${task.id}-${round}`,
+        workflow_id: state.workflow_id,
+        user_decisions: [...(task.user_decisions || []), `Rework requested by ${requestedBy}: ${feedback}`],
+        unresolved_items: task.unresolved_items || [],
+        context: [task.context, `Rework of task ${task.id} requested by ${requestedBy}: ${feedback}`].filter(Boolean).join('\n\n')
+      }, true);
+      created.rework_of = task.id;
+      task.superseded_by = created.id;
+      if (created.branch === 'video') {
+        state.branches.video = { ...state.branches.video, status: next.stage === 'video_render' ? 'rendering' : 'storyboarding', task_id: created.id };
+      }
+      state.history.push({ event: 'rework_requested', task_id: task.id, new_task_id: created.id, stage: created.stage, at: now() });
+      return this.#publicTask(created);
+    });
+  }
+
+  // Literature commands write outside task receipts, so they check the collection gate themselves.
+  async collectionGate() {
+    const state = await this.#load();
+    const task = state.tasks.find(item => item.stage === 'literature' && ['queued', 'running'].includes(item.status));
+    if (!task) {
+      throw new Error(`Literature search and ingest need an approved, open literature task (current stage: ${state.current_stage}). Approve collection or retry the literature task first.`);
+    }
+    const plan = await this.artifact(task.plan, 'plan');
+    const approval = state.approvals.collection;
+    if (!approval || approval.plan_sha256 !== plan.sha256) throw new Error('Collection approval is missing or bound to another plan hash');
+    return { task_id: task.id, plan_sha256: plan.sha256 };
   }
 
   async status() {
@@ -338,7 +488,7 @@ export class Engine {
       profile: state.profile,
       current_stage: state.current_stage,
       cycle: state.cycle,
-      tasks: state.tasks.map(task => this.#publicTask(task)),
+      tasks: state.tasks.map(task => ({ ...this.#publicTask(task), ...(leaseExpired(task) ? { lease_expired: true } : {}) })),
       artifacts: state.artifacts,
       approvals: state.approvals,
       branches: state.branches || { video: { status: 'idle', requested_plan_sha256: null } },
@@ -464,7 +614,7 @@ export class Engine {
     if (task.stage === 'literature') {
       state.artifacts.literature = task.artifacts;
       await this.#enqueue(state, {
-        request_id: `review-${state.cycle}`,
+        request_id: `review-${state.cycle}-${task.id}`,
         workflow_id: state.workflow_id,
         stage: 'review',
         inputs: task.artifacts,
@@ -480,16 +630,32 @@ export class Engine {
     }
   }
 
-  async #validateCollectionGate(state, approval) {
+  async #validateCollectionGate(state, approval, plan) {
     const profile = await this.profile(state.profile);
     const gate = profile.collection_gate || {};
-    if (gate.minimum_score_exclusive != null && !(Number(approval.quality?.score) > gate.minimum_score_exclusive)) {
+    const needsReport = gate.minimum_score_exclusive != null || Boolean(gate.require_hard_checks);
+    if (!needsReport && gate.minimum_rubric_total == null) return null;
+    const quality = { score: null, hard_checks_passed: null, rubric_total: null, report: null };
+    if (needsReport) {
+      // Automated scores come from the hash-bound report written by `rok validate`, never from the approver.
+      const project = state.project_dir ? path.resolve(this.root, state.project_dir) : path.dirname(path.resolve(this.root, plan.path));
+      const reportArtifact = await this.artifact(path.relative(this.root, path.join(project, 'quality-report.json')), 'quality_report')
+        .catch(() => { throw new Error('Collection gate needs quality-report.json; run rok validate for the current plan'); });
+      const report = await readJson(path.resolve(this.root, reportArtifact.path));
+      await new SchemaRegistry(this.root).assert('quality-report', report);
+      if (report.plan.sha256 !== plan.sha256) throw new Error('quality-report.json is bound to another plan hash; run rok validate again');
+      Object.assign(quality, { score: report.automated.score, hard_checks_passed: report.automated.hard_checks_passed, report: reportArtifact });
+    }
+    if (gate.minimum_score_exclusive != null && !(Number(quality.score) > gate.minimum_score_exclusive)) {
       throw new Error(`Quality score must be greater than ${gate.minimum_score_exclusive}`);
     }
-    if (gate.minimum_rubric_total != null && !(Number(approval.quality?.rubric_total) >= gate.minimum_rubric_total)) {
-      throw new Error(`Rubric total must be at least ${gate.minimum_rubric_total}`);
+    if (gate.minimum_rubric_total != null) {
+      // The rubric total is a human judgement recorded with the approval itself.
+      quality.rubric_total = Number(approval.quality?.rubric_total);
+      if (!(quality.rubric_total >= gate.minimum_rubric_total)) throw new Error(`Rubric total must be at least ${gate.minimum_rubric_total}`);
     }
-    if (gate.require_hard_checks && approval.quality?.hard_checks_passed !== true) throw new Error('Hard checks must pass');
+    if (gate.require_hard_checks && quality.hard_checks_passed !== true) throw new Error('Hard checks must pass');
+    return quality;
   }
 
   async #requireArtifacts(state, task) {
@@ -509,6 +675,28 @@ export class Engine {
     }
     if (manifest.video.path !== video.path || manifest.video.sha256 !== video.sha256) throw new Error('Video manifest file binding does not match the rendered video');
     if (!Object.values(manifest.technical_checks).every(Boolean)) throw new Error('Video technical and licensing checks must all pass');
+  }
+
+  #assertRoleFree(state, task) {
+    const busy = state.tasks.find(item => item.id !== task.id && item.role === task.role && item.status === 'running');
+    if (busy) throw new Error(`Role is busy: ${task.role} (task ${busy.id}; finish it or run rok release ${busy.id})`);
+  }
+
+  #expireLeases(state, role) {
+    for (const task of state.tasks) {
+      if (task.role === role && leaseExpired(task)) this.#failTask(state, task, `Lease expired at ${task.lease_expires_at} without a receipt`, 'lease_expired');
+    }
+  }
+
+  #failTask(state, task, reason, event) {
+    task.status = 'failed';
+    task.reason = reason;
+    task.token = null;
+    task.completed_at = now();
+    if (task.branch === 'video') state.branches.video = { ...state.branches.video, status: `${task.stage}_failed`, task_id: task.id };
+    else state.current_stage = `${task.stage}_failed`;
+    state.errors.push({ task_id: task.id, stage: task.stage, status: 'failed', reason, at: now() });
+    state.history.push({ event, task_id: task.id, stage: task.stage, at: now() });
   }
 
   #findArtifact(task, kind) {
@@ -570,7 +758,7 @@ export class Engine {
 
   async #transaction(fn, options = {}) {
     await fs.mkdir(this.workDir, { recursive: true });
-    const lock = await fs.open(this.lockPath, 'wx');
+    const lock = await this.#acquireLock();
     try {
       const state = await exists(this.statePath) ? await readJson(this.statePath) : null;
       if (!state && !options.allowMissing) throw new Error('Workflow is not initialized');
@@ -610,5 +798,39 @@ export class Engine {
       await lock.close();
       await fs.unlink(this.lockPath).catch(() => {});
     }
+  }
+
+  async #acquireLock() {
+    const deadline = Date.now() + LOCK_WAIT_MS;
+    for (;;) {
+      try {
+        const handle = await fs.open(this.lockPath, 'wx');
+        await handle.writeFile(JSON.stringify({ pid: process.pid, host: os.hostname(), at: now() }));
+        return handle;
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+      if (await this.#removeStaleLock()) continue;
+      if (Date.now() >= deadline) {
+        throw new Error(`Workflow state is locked by another rok command. If none is running, delete ${slash(path.relative(this.root, this.lockPath))}.`);
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+
+  async #removeStaleLock() {
+    let stat;
+    try {
+      stat = await fs.stat(this.lockPath);
+    } catch (error) {
+      if (error.code === 'ENOENT') return true;
+      throw error;
+    }
+    let owner = null;
+    try { owner = JSON.parse(await fs.readFile(this.lockPath, 'utf8')); } catch { /* the owner may still be writing it */ }
+    const deadOwner = owner?.host === os.hostname() && Number.isInteger(owner.pid) && owner.pid !== process.pid && !processAlive(owner.pid);
+    if (!deadOwner && Date.now() - stat.mtimeMs < STALE_LOCK_MS) return false;
+    await fs.unlink(this.lockPath).catch(() => {});
+    return true;
   }
 }

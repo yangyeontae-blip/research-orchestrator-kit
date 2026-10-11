@@ -208,37 +208,59 @@ test('the synthetic lifecycle stops at the new plan collection gate', async t =>
   assert.equal(status.approvals.revision, null);
 });
 
-test('JQI profile requires its plan artifacts and toolkit gate scores', async t => {
+async function writeQualityReport(engine, plan, automated) {
+  const status = await engine.status();
+  await fs.writeFile(path.join(engine.root, 'quality-report.json'), JSON.stringify({
+    schema_version: 1, project_id: 'synthetic', profile: status.profile, plan: { path: plan.path, sha256: plan.sha256 },
+    automated: { checks: [], limitations: [], ...automated },
+    ai_assessment: null, human_assessment: null, generated_at: new Date().toISOString()
+  }));
+}
+
+test('JQI collection gate reads scores from the hash-bound quality report, not the approver', async t => {
   const { engine, state } = await fixture(t, 'jqi');
-  let status = await draftPlan(engine, state, { supportArtifacts: true });
+  const status = await draftPlan(engine, state, { supportArtifacts: true });
+  await writeQualityReport(engine, status.artifacts.plan, { score: 9.0, hard_checks_passed: true });
   await assert.rejects(engine.approve('collection', {
     workflow_id: state.workflow_id,
     human_confirmed: true,
     plan: status.artifacts.plan,
-    quality: { score: 9.0, rubric_total: 8, hard_checks_passed: true }
+    quality: { score: 10, rubric_total: 8, hard_checks_passed: true }
   }), /greater than 9/);
+  await writeQualityReport(engine, { path: 'plan.md', sha256: 'f'.repeat(64) }, { score: 10, hard_checks_passed: true });
+  await assert.rejects(engine.approve('collection', {
+    workflow_id: state.workflow_id, human_confirmed: true, plan: status.artifacts.plan, quality: { rubric_total: 8 }
+  }), /another plan hash/);
+  await writeQualityReport(engine, status.artifacts.plan, { score: 10, hard_checks_passed: true });
+  await assert.rejects(engine.approve('collection', {
+    workflow_id: state.workflow_id, human_confirmed: true, plan: status.artifacts.plan, quality: { rubric_total: 7 }
+  }), /Rubric total/);
   const result = await engine.approve('collection', {
     workflow_id: state.workflow_id,
     human_confirmed: true,
     plan: status.artifacts.plan,
-    quality: { score: 9.1, rubric_total: 8, hard_checks_passed: true }
+    quality: { rubric_total: 8 }
   });
   assert.equal(result.task.stage, 'literature');
+  assert.equal(result.approval.quality.score, 10);
+  assert.equal(result.approval.quality.report.path, 'quality-report.json');
 });
 
 test('APA 7 profile requires support artifacts and completed hard checks', async t => {
   const { engine, state } = await fixture(t, 'apa7');
   const status = await draftPlan(engine, state, { supportArtifacts: true });
+  await writeQualityReport(engine, status.artifacts.plan, { score: 8, hard_checks_passed: false });
   await assert.rejects(engine.approve('collection', {
-    workflow_id: state.workflow_id,
-    human_confirmed: true,
-    plan: status.artifacts.plan
-  }), /Hard checks/);
-  const result = await engine.approve('collection', {
     workflow_id: state.workflow_id,
     human_confirmed: true,
     plan: status.artifacts.plan,
     quality: { hard_checks_passed: true }
+  }), /Hard checks/);
+  await writeQualityReport(engine, status.artifacts.plan, { score: 10, hard_checks_passed: true });
+  const result = await engine.approve('collection', {
+    workflow_id: state.workflow_id,
+    human_confirmed: true,
+    plan: status.artifacts.plan
   });
   assert.equal(result.task.stage, 'literature');
 });

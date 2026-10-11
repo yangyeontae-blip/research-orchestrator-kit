@@ -17,7 +17,8 @@
         "literature": { "$ref": "#/$defs/agent" },
         "video": { "$ref": "#/$defs/agent" }
       }
-    }
+    },
+    "lease_hours": { "type": "number", "exclusiveMinimum": 0 }
   },
   "additionalProperties": false,
   "$defs": {
@@ -30,7 +31,9 @@
         "inbox": { "type": "string" },
         "model": { "type": "string" },
         "base_url": { "type": "string", "format": "uri" },
-        "max_tokens": { "type": "integer", "minimum": 1 }
+        "max_tokens": { "type": "integer", "minimum": 1 },
+        "timeout_ms": { "type": "integer", "minimum": 1000 },
+        "max_retries": { "type": "integer", "minimum": 0, "maximum": 5 }
       },
       "additionalProperties": false
     }

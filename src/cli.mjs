@@ -49,9 +49,13 @@ const notes = takeOption('--notes', '');
 const formatOption = takeOption('--format', null);
 const officePort = takeOption('--port', null);
 const legacyRoot = takeOption('--legacy-root', null);
+const feedbackOption = takeOption('--feedback', null);
+const reasonOption = takeOption('--reason', '');
 const jsonOutput = takeFlag('--json');
+const rebind = takeFlag('--rebind');
 const [command, ...args] = argv;
-const engine = new Engine(root);
+const leaseHours = Number((await loadConfig(root).catch(() => ({ config: {} }))).config.lease_hours);
+const engine = new Engine(root, { leaseMs: leaseHours > 0 ? leaseHours * 60 * 60 * 1000 : undefined });
 const inputJson = async file => JSON.parse((await fs.readFile(path.resolve(root, file), 'utf8')).replace(/^\uFEFF/, ''));
 
 async function dispatch(task, options = {}) {
@@ -61,7 +65,8 @@ async function dispatch(task, options = {}) {
   if (agent.provider === 'claude') return { config: source, provider: 'claude', ...(await claudeDispatch(root, task, agent)) };
   if (['openai_api', 'anthropic_api'].includes(agent.provider)) {
     if (!options.runApi) return { config: source, provider: agent.provider, requires: 'Use `rok next` for the mandatory per-call confirmation.' };
-    return { config: source, provider: agent.provider, ...(await runApiTask(root, task, agent, { confirm: confirmCloudCall })) };
+    const outputDir = `${(await engine.status()).project_dir || 'workspace'}/tasks/${task.id}`;
+    return { config: source, provider: agent.provider, ...(await runApiTask(root, task, agent, { confirm: confirmCloudCall, outputDir })) };
   }
   return { config: source, provider: 'manual', ...manualDispatch(task) };
 }
@@ -79,16 +84,80 @@ async function confirmCloudCall(summary) {
   } finally { rl.close(); }
 }
 
+// Approvals, human use checks, and rework are human decisions: an agent shell without a terminal cannot record them.
+async function confirmHuman(lines, phrase) {
+  if (!stdin.isTTY) throw new Error('This command records a human decision and must be run by a person in an interactive terminal.');
+  stderr.write('\n' + lines.join('\n') + '\n');
+  const rl = createInterface({ input: stdin, output: stdout });
+  try {
+    const answer = await rl.question(`확인하려면 ${phrase}를 입력하세요: `);
+    if (answer.trim() !== phrase) throw new Error('Cancelled: confirmation phrase did not match');
+  } finally { rl.close(); }
+}
+
+async function ask(question) {
+  const rl = createInterface({ input: stdin, output: stdout });
+  try { return (await rl.question(question)).trim(); } finally { rl.close(); }
+}
+
+const bindingLine = (label, binding) => `- ${label}: ${binding?.path} (${binding?.sha256})`;
+
+async function approveCommand(kind, file) {
+  if (!['collection', 'revision', 'video'].includes(kind)) throw new Error('Approval kind must be collection, revision, or video');
+  if (!stdin.isTTY) throw new Error('This command records a human decision and must be run by a person in an interactive terminal.');
+  const status = await engine.status();
+  const approval = file ? await inputJson(file) : {
+    workflow_id: status.workflow_id,
+    plan: status.artifacts.plan,
+    ...(kind === 'revision' ? { report: status.artifacts.review_report } : {}),
+    ...(kind === 'video' ? { storyboard: status.artifacts.video_storyboard, source_map: status.artifacts.video_source_map } : {})
+  };
+  if (!file && kind === 'revision') {
+    const items = (await ask('반영할 항목 ID (쉼표 구분, 모두 반려하려면 빈칸): ')).split(',').map(item => item.trim()).filter(Boolean);
+    approval.approved_items = items;
+    if (!items.length) approval.decline_all = true;
+  }
+  const gate = kind === 'collection' ? (await engine.profile(status.profile)).collection_gate || {} : {};
+  if (gate.minimum_rubric_total != null && approval.quality?.rubric_total == null) {
+    approval.quality = { ...approval.quality, rubric_total: Number(await ask(`사람 평가 루브릭 합계 (최소 ${gate.minimum_rubric_total}): `)) };
+  }
+  approval.approved_by ||= await ask('승인자 이름 또는 식별자: ');
+  if (!approval.approved_by) throw new Error('승인자가 필요합니다');
+  await confirmHuman([
+    `${kind} 승인`,
+    bindingLine('계획서', approval.plan),
+    ...(kind === 'revision' ? [bindingLine('검토 보고서', approval.report), `- 반영 항목: ${approval.decline_all ? '없음 (모두 반려, 새 수집 회차)' : approval.approved_items?.join(', ')}`] : []),
+    ...(kind === 'video' ? [bindingLine('스토리보드', approval.storyboard), bindingLine('출처 지도', approval.source_map)] : []),
+    `- 승인자: ${approval.approved_by}`
+  ], 'APPROVE');
+  return engine.approve(kind, { ...approval, human_confirmed: true });
+}
+
+async function reworkCommand(taskId) {
+  const feedback = feedbackOption || (stdin.isTTY ? await ask('무엇을 고쳐야 하나요? ') : '');
+  if (!feedback) throw new Error('Rework requires --feedback "..."');
+  const status = await engine.status();
+  const task = status.tasks.find(item => item.id === taskId);
+  if (!task) throw new Error(`Unknown task: ${taskId}`);
+  if (!stdin.isTTY) throw new Error('This command records a human decision and must be run by a person in an interactive terminal.');
+  const requestedBy = await ask('요청자 이름 또는 식별자: ');
+  await confirmHuman([`${task.stage} 작업 ${taskId}을(를) 다시 작업하도록 돌려보냅니다.`, `- 피드백: ${feedback}`], 'REWORK');
+  return engine.rework(taskId, { feedback, requested_by: requestedBy || 'human' });
+}
+
 function humanStatus(status) {
   const queued = status.tasks.filter(task => task.status === 'queued');
   const failed = status.tasks.filter(task => ['partial', 'failed'].includes(task.status));
+  const expired = status.tasks.find(task => task.lease_expired);
   const video = status.branches?.video?.status || 'idle';
-  const pendingUse = status.tasks.find(task => task.status === 'completed' && ['generated', 'automated_verified'].includes(task.completion_level) && ['plan', 'revise', 'video_render'].includes(task.stage));
-  const next = pendingUse ? `검증 필요 (${pendingUse.completion_level}): ${pendingUse.stage} (${pendingUse.id})`
-    : status.current_stage === 'collection_approval' ? '계획서 수집 승인 필요'
-    : status.current_stage === 'revision_approval' ? '근거 반영 승인 필요'
+  const open = task => task.status === 'completed' && !task.superseded_by && ['plan', 'revise', 'video_render'].includes(task.stage);
+  const pendingUse = status.tasks.find(task => open(task) && ['generated', 'automated_verified'].includes(task.completion_level));
+  const next = expired ? `응답 기한이 지난 작업: ${expired.stage} (${expired.id}) → rok finish 또는 rok release`
+    : pendingUse ? `검증 필요 (${pendingUse.completion_level}): ${pendingUse.stage} (${pendingUse.id}); 미통과면 rok rework ${pendingUse.id}`
+    : status.current_stage === 'collection_approval' ? '계획서 수집 승인 필요 (rok approve collection, 고칠 점이 있으면 rok rework)'
+    : status.current_stage === 'revision_approval' ? '근거 반영 승인 필요 (rok approve revision, 모두 반려 가능)'
       : queued.length ? `${queued[0].role} 에이전트의 ${queued[0].stage} 작업 전달`
-        : failed.length ? `${failed[0].stage} 작업 retry`
+        : failed.length ? `${failed[0].stage} 작업 retry (입력이 바뀌었으면 --rebind)`
           : '대기 중';
   return [
     `워크플로: ${status.workflow_id}`,
@@ -113,7 +182,8 @@ async function nextAction() {
     const pending = status.tasks.find(task => task.status === 'running');
     if (pending) {
       const template = await engine.completionTemplate(pending.id);
-      return { action: 'handoff_pending', task: pending, dispatch: await dispatch({ ...pending, token: template.token }), next: `rok finish ${pending.id}` };
+      const next = pending.lease_expired ? `rok finish ${pending.id} | rok release ${pending.id} --reason "..."` : `rok finish ${pending.id}`;
+      return { action: 'handoff_pending', task: pending, dispatch: await dispatch({ ...pending, token: template.token }), next };
     }
     return { action: 'wait', message: humanStatus(status), status };
   }
@@ -177,6 +247,7 @@ async function verifyUseInteractive(taskId) {
     ['seeking', '재생 위치 이동'],
     ['audio', '소리 직접 청취']
   ];
+  if (!stdin.isTTY) throw new Error('Human use checks must be recorded by a person in an interactive terminal.');
   const rl = createInterface({ input: stdin, output: stdout });
   try {
     stdout.write('자동검사 통과. 아래 항목은 직접 확인한 결과만 기록하세요.\n');
@@ -196,6 +267,18 @@ async function verifyUseInteractive(taskId) {
   } finally { rl.close(); }
 }
 
+async function verifyUseFromFile(taskId, file) {
+  const specification = await inputJson(file);
+  if (specification.human_confirmation || specification.human_checks?.length) {
+    await confirmHuman([
+      `실사용 검증 기록: ${taskId}`,
+      `- 확인자: ${specification.human_confirmation?.verified_by || '(없음)'}`,
+      ...(specification.human_checks || []).map(item => `- ${item.name}: ${item.result} (${item.method})`)
+    ], 'VERIFIED');
+  }
+  return engine.verifyUse(taskId, specification);
+}
+
 function usage() {
   return [
     'rok new [--answers answers.json]',
@@ -204,7 +287,8 @@ function usage() {
     'rok video request [--audience ... --duration 90 --aspect 16:9 --notes ...]',
     'rok office [--port 4317] [--legacy-root "absolute project path"] (local read-only dashboard)',
     'rok init --profile generic|apa7|jqi | enqueue <request.json> | claim <task-id> | complete <receipt.json>',
-    'rok verify-use <task-id> [verification.json] | approve <collection|revision|video> <approval.json> | retry <task-id> [--root path]'
+    'rok approve <collection|revision|video> [approval.json] | verify-use <task-id> [verification.json]   (interactive terminal only)',
+    'rok rework <task-id> [--feedback "..."]   (interactive terminal only) | release <task-id> [--reason "..."] | retry <task-id> [--rebind] [--root path]'
   ].join('\n');
 }
 
@@ -233,14 +317,18 @@ try {
     result = { task, dispatch: await dispatch(task), token: task.token };
   } else if (command === 'complete') result = await engine.complete(await inputJson(args[0]));
   else if (command === 'finish') result = await finishInteractive(args[0]);
-  else if (command === 'approve') result = await engine.approve(args[0], await inputJson(args[1]));
-  else if (command === 'verify-use') result = args[1] ? await engine.verifyUse(args[0], await inputJson(args[1])) : await verifyUseInteractive(args[0]);
+  else if (command === 'approve') result = await approveCommand(args[0], args[1]);
+  else if (command === 'verify-use') result = args[1] ? await verifyUseFromFile(args[0], args[1]) : await verifyUseInteractive(args[0]);
   else if (command === 'status') result = await engine.status();
-  else if (command === 'retry') result = await engine.retry(args[0]);
+  else if (command === 'retry') result = await engine.retry(args[0], { rebind });
+  else if (command === 'release') result = await engine.release(args[0], reasonOption);
+  else if (command === 'rework') result = await reworkCommand(args[0]);
   else if (command === 'literature' && args[0] === 'search') {
+    await engine.collectionGate();
     const status = await engine.status();
     result = await searchLiterature(root, await projectDir(status), queryOption || args.slice(1).join(' '));
   } else if (command === 'literature' && args[0] === 'ingest') {
+    await engine.collectionGate();
     const status = await engine.status();
     const extension = path.extname(args[1] || '').toLowerCase();
     if (extension === '.pdf') result = await ingestLiteraturePdf(root, await projectDir(status), args[1], { id: literatureId });
