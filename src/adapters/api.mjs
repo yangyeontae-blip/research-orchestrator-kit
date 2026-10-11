@@ -51,14 +51,19 @@ async function postWithRetry(fetchImpl, url, init, { timeoutMs, maxRetries, slee
   const backoff = attempt => Math.min(1000 * 2 ** attempt, 30_000);
   for (let attempt = 0; ; attempt += 1) {
     let response;
+    // An explicit timer keeps the event loop alive until the deadline, unlike AbortSignal.timeout on Node 20/22.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new DOMException(`Timed out after ${timeoutMs} ms`, 'TimeoutError')), timeoutMs);
     try {
-      response = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      response = await fetchImpl(url, { ...init, signal: controller.signal });
     } catch (error) {
       // A timed-out generation may still be billed, so it is reported instead of silently repeated.
       if (error.name === 'TimeoutError' || error.name === 'AbortError') throw new Error(`API call timed out after ${timeoutMs} ms`);
       if (attempt >= maxRetries) throw error;
       await sleep(backoff(attempt));
       continue;
+    } finally {
+      clearTimeout(timer);
     }
     if (!RETRYABLE_STATUSES.has(response.status) || attempt >= maxRetries) return response;
     const retryAfter = Number(response.headers?.get?.('retry-after'));
