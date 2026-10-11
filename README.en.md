@@ -12,9 +12,9 @@
 
 [한국어](README.md) · [Watch the video](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [CLI reference](docs/CLI-REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md)
 
-[![Research Orchestrator Kit introduction video preview](docs/media/research-orchestrator-kit-v0.5-preview.webp)](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/)
-
 </div>
+
+https://github.com/user-attachments/assets/547d2e3b-6de2-466d-bc64-be61550bb635
 
 ## Why
 

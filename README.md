@@ -18,11 +18,11 @@
 
 ## 🎬 소개 영상
 
+https://github.com/user-attachments/assets/547d2e3b-6de2-466d-bc64-be61550bb635
+
 <div align="center">
 
-[![Research Orchestrator Kit 소개 영상: 클릭하면 나레이션·자막이 포함된 원본이 재생됩니다](docs/media/research-orchestrator-kit-v0.5-preview.webp)](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/)
-
-**▶ [전체 영상 보기 (98초, 한국어 나레이션·자막)](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/)** · [MP4 직접 열기](docs/media/research-orchestrator-kit-v0.5.mp4)
+98초 · 한국어 나레이션·자막 · [큰 화면 플레이어](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [원본 MP4](https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.5.0/research-orchestrator-kit-v0.5.mp4)
 
 </div>
 

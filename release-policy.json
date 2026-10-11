@@ -11,7 +11,8 @@
     "noreply@anthropic.com"
   ],
   "allowed_content_identifiers": [
-    "b8319cdc-7627-4e11-ad3a-8f9683e45a45"
+    "b8319cdc-7627-4e11-ad3a-8f9683e45a45",
+    "547d2e3b-6de2-466d-bc64-be61550bb635"
   ],
   "allowed_binary_files": [
     {
