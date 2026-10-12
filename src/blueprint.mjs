@@ -6,7 +6,8 @@ import {createReadStream} from 'node:fs';
 import {Engine} from './engine.mjs';
 import {readJson,writeJson,packageRoot} from './utils.mjs';
 import {execute} from './process.mjs';
-const SECTIONS=[['problem','문제의식',/문제의식|필요성|서론|problem|introduction/i],['purpose','연구 목적',/목적|purpose/i],['questions','연구문제',/연구\s*문제|연구\s*질문|questions/i],['concepts','개념',/개념|이론|concept|theor/i],['data','자료',/자료|대상|참여자|data|participant/i],['analysis','분석',/분석|analysis/i],['ethics','윤리',/윤리|ethic/i],['contribution','예상 기여',/기대|기여|contribution/i],['limitations','한계',/한계|limitation/i]];
+// Heading patterns cover Korean and English plan conventions; a section is only "confirmed" when a heading matches.
+const SECTIONS=[['problem','문제의식',/문제의식|문제\s*제기|문제와|필요성|서론|배경|problem|introduction|background|rationale|significance/i],['purpose','연구 목적',/목적|목표|purpose|aims?\b|objective/i],['questions','연구문제',/연구\s*문제|연구\s*질문|questions?/i],['concepts','개념',/개념|이론|분석\s*틀|concept|theor|framework/i],['data','자료',/자료|대상|참여자|표본|data|participant|sample|material/i],['analysis','분석',/분석|연구\s*방법|방법론|analysis|method/i],['ethics','윤리',/윤리|동의|IRB|ethic|consent/i],['contribution','예상 기여',/기대|기여|의의|contribution|expected|outcome|implication/i],['limitations','한계',/한계|범위|limitation|scope|boundar|delimit/i]];
 export async function createBlueprint(root,planPath,{previous}={}){
  const engine=new Engine(root),plan=await engine.artifact(planPath,'plan');const text=await fs.readFile(path.join(root,plan.path),'utf8');const lines=text.split(/\r?\n/);
  const headings=lines.flatMap((text,i)=>/^#{1,6}\s/.test(text)?[{text,line:i}]:[]);

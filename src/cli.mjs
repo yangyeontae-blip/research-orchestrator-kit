@@ -16,8 +16,8 @@ import { ingestLiteratureKoreanOffice } from './kordoc.mjs';
 import { exportPlanDocx, exportPlanHwpx } from './export.mjs';
 import { generateQualityReport, validateStandardArtifacts } from './quality.mjs';
 
-import {runWorkflow,stopRun,doctor} from './execution.mjs';
-import {createBlueprint,previewVideo} from './blueprint.mjs';
+import {runWorkflow,stopRun,doctor,authorizeRun,DEFAULT_LIMITS} from './execution.mjs';
+import {createBlueprint,previewVideo,renderBlueprint} from './blueprint.mjs';
 import {serveBridge} from './bridge.mjs';
 const argv = process.argv.slice(2);
 const takeOption = (name, fallback = null) => {
@@ -96,6 +96,43 @@ async function confirmHuman(lines, phrase) {
     const answer = await rl.question(`확인하려면 ${phrase}를 입력하세요: `);
     if (answer.trim() !== phrase) throw new Error('Cancelled: confirmation phrase did not match');
   } finally { rl.close(); }
+}
+
+// The run scope is the one approval that lets the runner work unattended, so it is shown in full and typed.
+async function authorizeCommand() {
+  if (!stdin.isTTY) throw new Error('This command records a human decision and must be run by a person in an interactive terminal.');
+  const status = await engine.status();
+  const queued = status.tasks.filter(task => task.status === 'queued');
+  const inputs = [...new Map(queued.flatMap(task => task.inputs || []).map(item => [item.path, { path: item.path }])).values()];
+  if (!inputs.length) throw new Error('No queued task inputs to approve. Start with rok new or finish the current decision first.');
+  const provider = (await ask('실행 도구 (claude_cli/codex_cli) [claude_cli]: ')) || 'claude_cli';
+  const queries = (await ask('탐색 검색어 (쉼표 구분, 개인정보 없이, 없으면 빈칸): ')).split(',').map(item => item.trim()).filter(Boolean);
+  const kci = queries.length > 0 && /^y/i.test(await ask('KCI 국내 검색도 요청할까요? KCI_API_KEY 필요 (y/N): '));
+  const email = queries.length > 0 ? await ask('Unpaywall 공개 원문 조회용 이메일 (없으면 빈칸): ') : '';
+  const proposal = { workflow_id: status.workflow_id, provider, inputs, queries, exploratory_search: queries.length > 0, kci, limits: { ...DEFAULT_LIMITS }, ...(email ? { unpaywall_email: email } : {}) };
+  const bound = [];
+  for (const input of inputs) bound.push(await engine.artifact(input));
+  await confirmHuman([
+    '실행 범위 승인',
+    `- 실행 도구: ${provider} (기존 로그인 사용, 유료 API 전환 없음)`,
+    ...bound.map(item => `- 보낼 파일: ${item.path} (${item.sha256})`),
+    `- 검색어: ${queries.length ? queries.join(' | ') : '없음 (탐색 수집 안 함)'}${kci ? ' · KCI 포함' : ''}`,
+    `- 상한: 후보 ${DEFAULT_LIMITS.candidates} · 원문 ${DEFAULT_LIMITS.downloads} · 보완 ${DEFAULT_LIMITS.supplement_rounds}회 · AI 호출 ${DEFAULT_LIMITS.worker_calls}회 · 유료 API 0원`,
+    '- 연구문제·방법 변경, 범위 확대, 최종 채택은 실행 중에도 다시 묻습니다.'
+  ], 'RUN');
+  return authorizeRun(root, proposal, { text: 'Typed RUN after reviewing the scope in an interactive terminal', source: 'interactive-terminal' });
+}
+
+async function renderCommand(file) {
+  if (!file) throw new Error('Usage: rok render <research-blueprint.json>');
+  if (!stdin.isTTY) throw new Error('This command records a human decision and must be run by a person in an interactive terminal.');
+  const blueprint = await engine.artifact(file, 'research_blueprint');
+  await confirmHuman([
+    '블루프린트 영상 렌더링',
+    `- 블루프린트: ${blueprint.path} (${blueprint.sha256})`,
+    '- 무음 · 한국어 자막 · 1080p. 계획 단계의 설계도이며 연구 결과가 아닙니다.'
+  ], 'RENDER');
+  return renderBlueprint(root, blueprint, { confirmation: { text: 'Typed RENDER after reviewing the blueprint hash', source: 'interactive-terminal', blueprint_sha256: blueprint.sha256 } });
 }
 
 async function ask(question) {
@@ -361,7 +398,7 @@ async function verifyUseFromFile(taskId, file) {
 
 function usage() {
   return [
-    'rok run | resume | stop | doctor | bridge | blueprint --plan file [--previous blueprint.json] | preview video.mp4',
+    'rok authorize (interactive terminal only) | run | resume | stop | doctor | bridge | blueprint --plan file [--previous blueprint.json] | render blueprint.json | preview video.mp4',
     'rok new [--answers answers.json]',
     'rok next | finish <task-id> | status [--json] | validate [--project dir] [--plan file] | export [--format docx|hwpx] [--plan file] [--output file]',
     'rok literature search --query "..." | rok literature ingest <pdf|hwp|hwpx> [--id literature-id]',
@@ -378,11 +415,13 @@ try {
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     stdout.write(usage() + '\n');
     process.exit(0);
-  } else if(command==='run'||command==='resume') result=await runWorkflow(root,{resume:command==='resume'});
+  } else if(command==='authorize') result=await authorizeCommand();
+  else if(command==='run'||command==='resume') result=await runWorkflow(root,{resume:command==='resume'});
   else if(command==='stop')result=await stopRun(root);
   else if(command==='doctor')result=await doctor(root);
   else if(command==='bridge'){await serveBridge(root);process.exit(0);}
   else if(command==='blueprint'){const status=await engine.status();result=await createBlueprint(root,planOption||status.artifacts.plan?.path,{previous:previousOption});}
+  else if(command==='render')result=await renderCommand(args[0]);
   else if(command==='preview'){const preview=await previewVideo(root,args[0]);stdout.write(preview.url+'\n');await new Promise(()=>{});}
   else if (command === 'new') {
     const answers = answersFile ? await inputJson(answersFile) : await promptResearchBrief();

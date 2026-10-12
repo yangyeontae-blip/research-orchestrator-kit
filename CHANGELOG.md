@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 - 2026-10-13
+
+- Completion is now the researcher's decision alone: removed the three-person external evaluation and the 9.5-point target, and added [docs/RESEARCHER-JUDGMENT.md](docs/RESEARCHER-JUDGMENT.md) describing what runs automatically and where the researcher decides.
+- Verified the native runner with a real Claude Code call (synthetic idea → plan → stop at the use-verification gate) and fixed what it exposed: worker files now must carry the stage's exact artifact kinds (enforced in the structured-output schema), and a "completed" response without required artifacts becomes partial.
+- `rok doctor` and the runner now find Codex and Claude installed as Windows npm `.cmd` shims, with `ROK_CODEX_BIN` / `ROK_CLAUDE_BIN` overrides.
+- Worker failures no longer store the CLI's echoed prompt (research text) in the workflow state; usage-limit failures say so plainly and point to `rok resume`.
+- Claude responses are saved beside Codex responses for inspection.
+- Blueprint extraction recognizes common Korean and English plan headings (e.g. Background, Aims, Methodology, Scope, 문제와 목적) without confusing 연구문제 with 문제의식.
+- Rebuilt the blueprint renderer: element coverage, per-element source lines, a question → data → analysis check, a gap summary, before/after comparison, and a duration computed from the plan.
+- New 97-second introduction video built from `docs/video/v0.6/`, including real blueprint renderer output; the README now plays it inline. Removed the v0.2/v0.3 video archives and older media from the tree.
+
 ## 0.6.0-alpha.1 - 2026-10-13
 
 - Added manual scoped native Codex/Claude execution, stop/recovery, and a trusted local JSONL chat bridge while preserving schema 1 and legacy gates.

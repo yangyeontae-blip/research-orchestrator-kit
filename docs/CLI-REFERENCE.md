@@ -2,6 +2,17 @@
 
 Run commands from the project root or add `--root <path>`. `rok --help` prints the compact command list.
 
+## Execution (v0.6)
+
+- `rok doctor`: checks that Codex CLI, Claude Code, and FFmpeg can be started. On Windows it resolves npm `.cmd` shims; set `ROK_CODEX_BIN` or `ROK_CLAUDE_BIN` to an executable or `.js` entry point for unusual installs. It does not check login state or remaining usage.
+- `rok authorize`: interactive only. Shows the run scope (tool, files and SHA-256, search terms, optional KCI and Unpaywall, limits, paid API budget 0) and records it after you type `RUN`.
+- `rok run` / `rok resume`: executes queued work inside the approved scope and stops at the next researcher decision, a usage limit, or the call limit. `resume` restarts only interrupted or failed runner work and keeps completed artifacts.
+- `rok stop`: asks a running runner to stop; completed artifacts are kept.
+- `rok blueprint [--plan file] [--previous blueprint.json]`: extracts the research blueprint with source line ranges; `--previous` adds a text comparison.
+- `rok render <research-blueprint.json>`: interactive only. Shows the blueprint hash and renders the silent, captioned 1080p video after you type `RENDER`. Needs the optional renderer (`npm ci --prefix docs/video/v0.5/remotion`).
+- `rok preview <video.mp4>`: serves a local player with click-to-play, seeking, and a separate download link.
+- `rok bridge`: JSONL bridge for a trusted local chat host; see [chat-execution.md](chat-execution.md).
+
 ## Researcher-facing commands
 
 - `rok new [--answers answers.json]`: asks for the idea, `generic`/APA 7/JQI profile, route, method, deadline, institution guidance, and sensitivity; creates `research-brief.json` and the first task.

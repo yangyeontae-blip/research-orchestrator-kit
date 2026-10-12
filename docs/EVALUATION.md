@@ -76,6 +76,6 @@ If the check cannot be performed, report `generated; end-user verification pendi
 ## Remaining evaluation gaps
 
 - No distributed-filesystem concurrency test.
-- The required three-person external comparison is pending; the repository therefore describes 9.5 as a target, not an achieved score.
+- Completion is the researcher's decision (`finalize`), recorded against the current file hashes; see [RESEARCHER-JUDGMENT.md](RESEARCHER-JUDGMENT.md). No external score is used as a release or completion criterion.
 - No performance benchmark because the state files are intentionally small and local.
 - Live API smoke tests remain opt-in; default CI uses mock servers and makes no billable calls.

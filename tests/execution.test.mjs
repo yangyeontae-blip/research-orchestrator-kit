@@ -20,7 +20,7 @@ test('changed approved input and active lock block execution',async t=>{
  await fs.writeFile(path.join(root,'.research-work/runner.lock'),'{}');await assert.rejects(runWorkflow(root),/already active/);
 });
 test('worker failure resumes only failed stage',async t=>{
- const {root,engine}=await setup(t);await assert.rejects(runWorkflow(root,{worker:async()=>{throw new Error('quota');}}),/quota/);assert.equal((await engine.status()).tasks[0].status,'partial');
+ const {root,engine}=await setup(t);await assert.rejects(runWorkflow(root,{worker:async()=>{throw new Error('quota');}}),/usage limit/);assert.equal((await engine.status()).tasks[0].status,'partial');
  await runWorkflow(root,{resume:true,worker:async()=>JSON.stringify({structured_output:{status:'completed',handoff_state:'hold',reason:'done',files:[{name:'study.md',kind:'study_record',content:'Synthetic record'}]}})});assert.equal((await engine.status()).tasks[0].status,'completed');
 });
 test('worker traversal cannot become completed artifacts',async t=>{
@@ -74,4 +74,34 @@ test('OA acquisition verifies matching PDF and does not download successful work
  const root=await toolkitFixture(t);await fs.mkdir(path.join(root,'workspace/a'),{recursive:true});const item={id:'synthetic',title:'Synthetic Study',normalized_title:'synthetic study',authors:['Synthetic Author'],year:2030,doi:null,sources:['openalex'],decision:'candidate',reason:'Synthetic fixture',verification:'metadata_only',oa_locations:[{url:'https://example.org/test.pdf',source:'openalex',license:'cc-by',version:'publishedVersion'}]};await fs.writeFile(path.join(root,'workspace/a/literature-manifest.json'),JSON.stringify({schema_version:1,project_id:'a',searches:[],items:[item],updated_at:new Date().toISOString()}));
  let calls=0;const download=async url=>{calls++;return {bytes:makePdf('Synthetic Study provides a sufficiently long synthetic passage for parser validation.'),url};};
  const first=await collectOpenAccess(root,'workspace/a',{download});assert.equal(first.items[0].identity_checked,true);const saved=JSON.parse(await fs.readFile(path.join(root,'workspace/a/acquisition-log.json')));saved.items[0].verification='unavailable';await fs.writeFile(path.join(root,'workspace/a/acquisition-log.json'),JSON.stringify(saved));const resumed=await collectOpenAccess(root,'workspace/a',{download,limit:1});assert.equal(resumed.items[0].verification,'pdf_ingested');assert.equal(calls,1);await fs.appendFile(path.join(root,resumed.items[0].parsed.path),'changed');await assert.rejects(collectOpenAccess(root,'workspace/a',{download}),/hash mismatch/);
+});
+
+import {nativeCommand,resolveShim} from '../src/execution.mjs';
+test('Windows npm .cmd shims resolve to their real executable or script',async t=>{
+ const root=await toolkitFixture(t);const bin=path.join(root,'npm');await fs.mkdir(path.join(bin,'node_modules/@openai/codex/bin'),{recursive:true});await fs.mkdir(path.join(bin,'node_modules/@anthropic-ai/claude-code/bin'),{recursive:true});
+ await fs.writeFile(path.join(bin,'node_modules/@openai/codex/bin/codex.js'),'');await fs.writeFile(path.join(bin,'node_modules/@anthropic-ai/claude-code/bin/claude.exe'),'');
+ await fs.writeFile(path.join(bin,'codex.cmd'),String.raw`@ECHO off
+endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\node_modules\@openai\codex\bin\codex.js" %*`);
+ await fs.writeFile(path.join(bin,'claude.cmd'),String.raw`@ECHO off
+"%dp0%\node_modules\@anthropic-ai\claude-code\bin\claude.exe"   %*`);
+ const codex=await nativeCommand('codex_cli',{env:{},where:async()=>[path.join(bin,'codex'),path.join(bin,'codex.cmd')]});assert.equal(codex.file,process.execPath);assert.match(codex.prefix[0],/codex\.js$/);
+ const claude=await nativeCommand('claude_cli',{env:{},where:async()=>[path.join(bin,'claude.cmd')]});assert.match(claude.file,/claude\.exe$/);assert.deepEqual(claude.prefix,[]);
+ assert.equal(await resolveShim(path.join(bin,'missing.cmd')),null);
+ const override=await nativeCommand('codex_cli',{env:{ROK_CODEX_BIN:path.join(bin,'node_modules/@openai/codex/bin/codex.js')}});assert.equal(override.file,process.execPath);
+ await assert.rejects(nativeCommand('claude_cli',{env:{ROK_CLAUDE_BIN:path.join(bin,'nope.exe')}}),/not found/);
+});
+
+test('worker files must use the stage artifact kinds; a free-form kind cannot complete a plan',async t=>{
+ const root=await toolkitFixture(t);await createResearchProject(root,{title:'Synthetic kinds',idea:'Synthetic research only',profile:'generic',entry_mode:'direct_plan',method:'synthetic',deadline:null,institution_guidance:'Synthetic',sensitive_information:false});
+ const engine=new Engine(root),state=await engine.status();await authorizeRun(root,{workflow_id:state.workflow_id,provider:'claude_cli',inputs:state.tasks[0].inputs,queries:[]},confirmation);
+ let schemaKinds;const worker=async(file,args)=>{schemaKinds=JSON.parse(args[args.indexOf('--json-schema')+1]).properties.files.items.properties.kind.enum;return JSON.stringify({structured_output:{status:'completed',handoff_state:'ready',reason:'x',files:[{name:'plan.md',kind:'markdown',content:'# Plan'}]}});};
+ await assert.rejects(runWorkflow(root,{worker}),/Invalid structured worker response/);assert.ok(schemaKinds.includes('plan'));assert.ok(!schemaKinds.includes('markdown'));
+ assert.equal((await engine.status()).tasks[0].status,'partial');
+});
+
+import {workerFailure} from '../src/execution.mjs';
+test('worker failures never store the echoed prompt and name usage limits plainly',()=>{
+ const echoed='Worker exited 1: {"role_instructions":"secret research text","inputs":[{"text":"participant diary"}]}\nERROR: You have hit your usage limit. Try again at 12:49 PM.';
+ const limit=workerFailure(echoed);assert.match(limit,/usage limit/);assert.doesNotMatch(limit,/secret|diary/);
+ const other=workerFailure('Worker exited 2: {"inputs":[{"text":"participant diary"}]}\nfatal: model not available');assert.doesNotMatch(other,/diary/);assert.match(other,/model not available/);assert.ok(other.length<=400);
 });

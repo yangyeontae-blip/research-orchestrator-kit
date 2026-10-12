@@ -12,7 +12,8 @@
   ],
   "allowed_content_identifiers": [
     "b8319cdc-7627-4e11-ad3a-8f9683e45a45",
-    "547d2e3b-6de2-466d-bc64-be61550bb635"
+    "547d2e3b-6de2-466d-bc64-be61550bb635",
+    "36a564eb-c83a-4041-b669-1b9d65dc9776"
   ],
   "allowed_binary_files": [
     {
@@ -24,6 +25,11 @@
       "path": "docs/media/research-orchestrator-kit-v0.5.mp4",
       "max_bytes": 52428800,
       "sha256": "4373cd366365b53746cb9c15d55ac811a31456e4f6811a49e9fac06740afaec0"
+    },
+    {
+      "path": "docs/media/research-orchestrator-kit-v0.6.mp4",
+      "max_bytes": 52428800,
+      "sha256": "dc70067f9d02b044466262e1e044898256df0137d6bd8328a66bf993e65f0459"
     }
   ],
   "note": "This policy keeps personal author identities out of the published history. Repository ownership remains visible on GitHub."
