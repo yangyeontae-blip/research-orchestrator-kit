@@ -102,6 +102,7 @@ export async function runWorkflow(root,{resume=false,worker=execute,executable}=
       const allowed=[...scope.inputs,...scope.generated];
       for(const b of next.inputs||[])if(!allowed.some(a=>a.path===b.path&&a.sha256===b.sha256))throw new Error(`New input needs scope approval: ${b.path}`);
       task=await engine.claim(next.id,'rok-runner');
+      await save(at(root,'active-worker.json'),{id:task.id,token:task.token});
       if(task.stage==='literature'){
         await engine.collectionGate();const project=status.project_dir;if(!project)throw new Error('Project directory required');
         for(const query of scope.queries)await searchLiterature(root,project,query,{maxCandidates:scope.limits.candidates,kci:Boolean(scope.kci)});
@@ -110,9 +111,8 @@ export async function runWorkflow(root,{resume=false,worker=execute,executable}=
         const artifacts=[await engine.artifact(reportPath,'collection_report')];
         for(const record of acquisition.items.filter(r=>r.identity_checked&&r.verification==='pdf_ingested'))artifacts.push(await engine.artifact(record.parsed_path,'parsed_text'));
         scope.generated.push(...artifacts);await save(at(root,'run-scope.json'),scope);
-        const ok=artifacts.some(a=>a.kind==='parsed_text');await engine.complete({task_id:task.id,token:task.token,status:ok?'completed':'partial',reason:ok?'Available matched full text parsed; coverage gaps retained':'No matched parsed full text available',artifacts});task=null;if(!ok)return {status:'partial',reason:'Full text unavailable; upload authorized source documents or revise search scope'};continue;
+        const ok=artifacts.some(a=>a.kind==='parsed_text');await engine.complete({task_id:task.id,token:task.token,status:ok?'completed':'partial',reason:ok?'Available matched full text parsed; coverage gaps retained':'No matched parsed full text available',artifacts});await fs.unlink(at(root,'active-worker.json'));task=null;if(!ok)return {status:'partial',reason:'Full text unavailable; upload authorized source documents or revise search scope'};continue;
       }
-      await save(at(root,'active-worker.json'),{id:task.id,token:task.token});
       const attempt=path.join('.research-work','workers',task.id,randomUUID());const directory=path.join(root,attempt);
       await fs.mkdir(directory,{recursive:true});
       const texts=[];for(const [i,b]of [...(task.inputs||[]),...(task.plan?[task.plan]:[]),...(['study','plan'].includes(task.stage)?scope.discovery_artifacts||[]:[])].filter((b,i,a)=>a.findIndex(x=>x.path===b.path)===i).entries()){
@@ -120,7 +120,7 @@ export async function runWorkflow(root,{resume=false,worker=execute,executable}=
         if(!/\.(md|txt|json)$/i.test(binding.path))throw new Error('Only approved text is sent; raw documents are not sent');
         const bytes=await fs.readFile(path.join(root,binding.path));if(bytes.length>500000)throw new Error('Input exceeds 500 KB; select relevant excerpts');
         if(detectSensitiveText(bytes.toString('utf8')).length&&!scope.allow_sensitive_text)throw new Error('Sensitive text needs scope approval');
-        texts.push({name:`input-${i}`,sha256:binding.sha256,text:bytes.toString('utf8')});
+        texts.push({name:`input-${i}`,source:binding,sha256:binding.sha256,text:bytes.toString('utf8')});
       }
       const requirements=await engine.completionTemplate(task.id);
       if(task.stage==='review')requirements.required_kinds.push('evidence_companion');
