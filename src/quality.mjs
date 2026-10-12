@@ -162,8 +162,13 @@ export async function validateStandardArtifacts(root, projectDir, options = {}) 
       await registry.assert(schema, value);
       if (schema === 'document-manifest') {
         const md = path.resolve(root, value.markdown.path);
-        const docx = path.resolve(root, value.docx.path);
-        if (await sha256File(md) !== value.markdown.sha256 || await sha256File(docx) !== value.docx.sha256) throw new Error('document manifest hash mismatch');
+        if (await sha256File(md) !== value.markdown.sha256) throw new Error('document manifest markdown hash mismatch');
+        for (const format of ['docx', 'hwpx']) {
+          if (!value[format]) continue;
+          const document = path.resolve(root, value[format].path);
+          if (!await exists(document)) throw new Error(`document manifest ${format} file is missing`);
+          if (await sha256File(document) !== value[format].sha256) throw new Error(`document manifest ${format} hash mismatch`);
+        }
       }
       results.push({ file, status: 'valid' });
     } catch (error) {
