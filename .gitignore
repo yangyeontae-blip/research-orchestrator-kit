@@ -21,3 +21,6 @@ Thumbs.db
 
 # Local video render logs
 docs/video-*-render*.log
+
+# Generated optional renderer entrypoints
+**/.rok-renderer/

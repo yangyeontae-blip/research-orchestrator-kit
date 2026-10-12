@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0-alpha.1 - 2026-10-13
+
+- Added manual scoped native Codex/Claude execution, stop/recovery, and a trusted local JSONL chat bridge while preserving schema 1 and legacy gates.
+- Added bounded OA PDF acquisition, optional KCI metadata lookup, RIS/BibTeX import, and hash/page/quote evidence checks.
+- Added source-bound blueprint extraction, text comparisons, optional Remotion rendering with separately approved local audio, and a local range-enabled video player.
+- Added synthetic regression coverage and an actual Codex study smoke check. This is a development preview: no external researcher validation, no claim of a fully autonomous end-to-end research run, and no 9.5-score claim.
+- Video preview rendering remains a separate action; native CLI account billing and OS isolation remain the host operator’s responsibility.
+
 ## 0.5.2 - 2026-10-11
 
 - Added a focused `collect-more` loop that binds explicit evidence gaps and the latest review report to a renewed collection approval, retains earlier literature, and rechecks the combined corpus.

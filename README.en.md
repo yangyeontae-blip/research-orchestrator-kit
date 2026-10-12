@@ -2,17 +2,21 @@
 
 # Research Orchestrator Kit
 
-**A local-first research orchestrator that binds every step, from idea to plan, evidence, and revision, to one hash.**
+**A local-first research orchestrator that binds every step, from idea to plan, evidence, and revision, to version-specific hashes.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.5.2-5EEAD4)
+![version](https://img.shields.io/badge/version-0.6.0--alpha.1-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-59%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-75%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [한국어](README.md) · [Watch the video](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [CLI reference](docs/CLI-REFERENCE.md) · [Architecture](docs/ARCHITECTURE.md)
 
 </div>
+
+## Execution system preview
+
+Scoped native CLI execution, OA acquisition, typed evidence checks and source-bound blueprint rendering are available as a development preview. This is not an externally validated release. See [setup, chat bridge and limitations](docs/chat-execution.md).
 
 https://github.com/user-attachments/assets/547d2e3b-6de2-466d-bc64-be61550bb635
 
@@ -23,7 +27,7 @@ When generative AI assists research, the failure is rarely the model. It is **ve
 ## Core ideas
 
 - **Everything is hash-bound.** Every handoff, receipt, and approval records input paths and SHA-256. Change one character of the plan and its earlier approvals become stale.
-- **People decide.** Collection, revision, and video approvals, human use checks, and rework requests are recorded only from an interactive terminal with a typed confirmation; agent shells are refused. Gate scores come from the plan-bound quality report, never from the approver.
+- **People decide.** Collection, revision, and video approvals and human use checks require an actual human decision, entered interactively or relayed by a trusted local chat host. Gate scores come from the plan-bound quality report, never from the approver.
 - **Evidence states stay visible.** Each claim is `original_verified`, `parsed_verified`, `metadata_only`, or `unverified`. Automated checks, AI assessment, and human judgment are separate fields.
 - **No dead ends.** `rework`, `release` with claim leases, `retry --rebind`, declining all review items, and automatic stale-lock recovery give every state a next action.
 - **Local by default.** PDF, HWP, and HWPX files are parsed locally. Cloud adapters are optional, confirm every call, write only into a fresh per-task directory, and never upload source office documents.

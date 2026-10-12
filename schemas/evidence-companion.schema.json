@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ROK typed evidence companion",
+  "type": "object",
+  "required": [
+    "plan_sha256",
+    "claims"
+  ],
+  "properties": {
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "claim",
+          "locations"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "claim": {
+            "type": "string",
+            "minLength": 1
+          },
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "document",
+                "parsed",
+                "pdf_page",
+                "quote",
+                "relation"
+              ],
+              "properties": {
+                "document": {
+                  "$ref": "#/$defs/binding"
+                },
+                "parsed": {
+                  "$ref": "#/$defs/binding"
+                },
+                "pdf_page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "printed_page": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "quote": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "relation": {
+                  "enum": [
+                    "support",
+                    "contradiction",
+                    "context"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "semantic_review": {
+            "type": "object"
+          },
+          "human_review": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "kind": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

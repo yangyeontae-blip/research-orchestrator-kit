@@ -2,17 +2,25 @@
 
 # Research Orchestrator Kit
 
-**연구 아이디어에서 계획서, 문헌 근거, 보완본까지. 모든 단계를 하나의 해시로 묶는 로컬 우선 연구 오케스트레이터**
+**연구 아이디어에서 계획서, 문헌 근거, 보완본까지. 각 산출물과 승인을 버전별 해시로 연결하는 로컬 우선 연구 오케스트레이터**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.5.2-5EEAD4)
+![version](https://img.shields.io/badge/version-0.6.0--alpha.1-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-59%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-75%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [소개 영상](#-소개-영상) · [핵심 아이디어](#-핵심-아이디어) · [작동 방식](#-작동-방식) · [10분 시작](#-10분-시작) · [문서](#-문서) · [English](README.en.md)
 
 </div>
+
+## 실행 시스템 개발 프리뷰
+
+`v0.6.0-alpha.1`은 기존 수동 흐름을 유지하는 개발 프리뷰입니다. `rok doctor`로 도구 설치를 확인하고, 호스트가 `rok bridge --root <작업폴더>`를 연결하면 연구자가 채팅에서 범위와 버전을 승인할 수 있습니다. 연결은 자동 설치되지 않습니다.
+
+아이디어 → 승인된 탐색 → 초안·DOCX·블루프린트 → 사람 확인 → 집중 수집·파싱 → 독립 검토 → 반영 승인 → 보완본으로 진행합니다. 영상은 별도 승인한 블루프린트에서 생성하고 로컬 플레이어에서 재생합니다. 현재 실행기는 영상 작업을 자동 완료하지 않으며, 별도 렌더링과 실제 사용 확인이 필요합니다.
+
+승인 범위 기반 `run/resume/stop`, 네이티브 Codex·Claude 실행, 공개 원문 확보, 근거 위치 검증, 연구 블루프린트 생성·영상 렌더링을 추가했습니다. **외부 사용자 검증을 마친 정식 릴리스는 아닙니다.** [설정·채팅 연결·현재 한계](docs/chat-execution.md)를 확인하세요.
 
 ---
 
@@ -43,10 +51,10 @@ Research Orchestrator Kit은 이 문제를 **파일, SHA-256, 사람의 명시�
 | | 원칙 | 구현 |
 |---|---|---|
 | 🔗 | **모든 것은 해시에 묶인다** | 인계·receipt·승인마다 입력 파일 경로와 SHA-256을 기록합니다. 계획서가 한 글자만 바뀌어도 이전 승인은 무효가 됩니다. |
-| 🧑‍⚖️ | **판단은 사람이 한다** | 수집·반영·영상 승인과 실사용 검증은 대화형 터미널에서 사람이 직접 입력해야 기록됩니다. 에이전트의 비대화형 셸에서는 거부됩니다. |
+| 🧑‍⚖️ | **판단은 사람이 한다** | 수집·반영·영상 승인과 실사용 검증은 사람이 결정합니다. 대화형 터미널 또는 실제 사용자 응답을 전달하는 신뢰된 로컬 채팅 연결을 사용합니다. |
 | 📚 | **근거 상태를 숨기지 않는다** | 모든 주장은 `원문 확인`·`파싱 확인`·`메타데이터만`·`미확인` 중 하나로 남습니다. 자동 검사, AI 평가, 사람 평가는 다른 필드입니다. |
 | 🛟 | **막다른 길이 없다** | 재작업 요청, 작업 회수(lease), `--rebind` 재시도, 남은 잠금 자동 정리로 어떤 상태에서도 다음 행동이 있습니다. |
-| 🏠 | **로컬이 기본이다** | PDF·HWP·HWPX는 로컬에서만 읽습니다. 클라우드 API는 선택이며 매 호출마다 전송 파일을 보여주고 `SEND` 입력을 받습니다. |
+| 🏠 | **로컬이 기본이다** | PDF·HWP·HWPX는 로컬에서만 읽습니다. 기존 API 어댑터는 매 호출 `SEND` 확인을 받습니다. 새 네이티브 CLI는 승인된 범위의 텍스트를 전송합니다. |
 
 ## 🧭 작동 방식
 
@@ -57,7 +65,7 @@ Research Orchestrator Kit은 이 문제를 **파일, SHA-256, 사람의 명시�
 | **기획팀장** (orchestrator) | 상태, 인계, 승인 관문, 오류 재개. 다음 단계 작업은 기획팀장만 만듭니다. |
 | **공부** 에이전트 | 학습 지원, 공부 기록, 연구 연결 제안 |
 | **연구** 에이전트 | 계획서, 근거 검토, 승인된 항목만 반영한 보완본 |
-| **문헌** 에이전트 | Crossref·OpenAlex 검색, 중복 제거, 합법적으로 가진 PDF·HWP·HWPX 파싱 |
+| **문헌** 에이전트 | Crossref·OpenAlex·선택형 KCI 검색, 공개 원문 확보, 중복 제거, PDF·HWP·HWPX 로컬 파싱 |
 | **영상** 에이전트 | 연구 흐름 스토리보드, 장면별 근거표, 승인된 영상 렌더링 |
 
 에이전트는 Codex, Claude, OpenAI·Anthropic API, 사람 중 무엇이든 될 수 있습니다. 모두 같은 파일 기반 인계와 receipt 형식을 씁니다.

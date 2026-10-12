@@ -74,3 +74,9 @@
 - `rok approve <collection|revision|video> <approval.json>`
 - `node src/cli.mjs status`
 - `node src/cli.mjs retry <task-id>`
+
+## 범위 승인 실행 프리뷰
+- `docs/chat-execution.md`의 호스트 계약을 따른다. 실제 사용자 응답·출처·파일 해시로 실행 범위를 승인하며 작업자가 승인을 만들어내지 않는다.
+- `run/resume/stop/doctor/blueprint`는 직접 요청할 때만 실행한다. heartbeat와 자동 유료 API 전환은 금지한다.
+- 작성과 검토는 새 컨텍스트로 분리한다. 파싱 위치 대조와 AI 의미 판단, 사람 검토를 구분한다.
+- 범위 승인으로 계획서 버전 승인이나 실제 사용 검증을 대신하지 않는다. 영상 프리뷰 생성은 최종 영상 작업 완료가 아니다.

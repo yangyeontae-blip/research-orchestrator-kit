@@ -16,6 +16,9 @@ import { ingestLiteratureKoreanOffice } from './kordoc.mjs';
 import { exportPlanDocx, exportPlanHwpx } from './export.mjs';
 import { generateQualityReport, validateStandardArtifacts } from './quality.mjs';
 
+import {runWorkflow,stopRun,doctor} from './execution.mjs';
+import {createBlueprint,previewVideo} from './blueprint.mjs';
+import {serveBridge} from './bridge.mjs';
 const argv = process.argv.slice(2);
 const takeOption = (name, fallback = null) => {
   const index = argv.indexOf(name);
@@ -52,6 +55,7 @@ const gapsOption = takeOption('--gaps', '');
 const documentOption = takeOption('--document', null);
 const jsonOutput = takeFlag('--json');
 const rebind = takeFlag('--rebind');
+const previousOption=takeOption('--previous',null);
 const [command, ...args] = argv;
 const leaseHours = Number((await loadConfig(root).catch(() => ({ config: {} }))).config.lease_hours);
 const engine = new Engine(root, { leaseMs: leaseHours > 0 ? leaseHours * 60 * 60 * 1000 : undefined });
@@ -357,6 +361,7 @@ async function verifyUseFromFile(taskId, file) {
 
 function usage() {
   return [
+    'rok run | resume | stop | doctor | bridge | blueprint --plan file [--previous blueprint.json] | preview video.mp4',
     'rok new [--answers answers.json]',
     'rok next | finish <task-id> | status [--json] | validate [--project dir] [--plan file] | export [--format docx|hwpx] [--plan file] [--output file]',
     'rok literature search --query "..." | rok literature ingest <pdf|hwp|hwpx> [--id literature-id]',
@@ -373,7 +378,13 @@ try {
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     stdout.write(usage() + '\n');
     process.exit(0);
-  } else if (command === 'new') {
+  } else if(command==='run'||command==='resume') result=await runWorkflow(root,{resume:command==='resume'});
+  else if(command==='stop')result=await stopRun(root);
+  else if(command==='doctor')result=await doctor(root);
+  else if(command==='bridge'){await serveBridge(root);process.exit(0);}
+  else if(command==='blueprint'){const status=await engine.status();result=await createBlueprint(root,planOption||status.artifacts.plan?.path,{previous:previousOption});}
+  else if(command==='preview'){const preview=await previewVideo(root,args[0]);stdout.write(preview.url+'\n');await new Promise(()=>{});}
+  else if (command === 'new') {
     const answers = answersFile ? await inputJson(answersFile) : await promptResearchBrief();
     result = await createResearchProject(root, answers);
   } else if (command === 'next') result = await nextAction();
