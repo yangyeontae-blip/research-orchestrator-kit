@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createResearchProject } from '../src/wizard.mjs';
 import { generateQualityReport, validateStandardArtifacts } from '../src/quality.mjs';
-import { exportPlanDocx } from '../src/export.mjs';
+import { exportPlanDocx, exportPlanHwpx } from '../src/export.mjs';
 import { toolkitFixture, zipEntry } from './helpers.mjs';
 
 async function setup(t, profile = 'apa7') {
@@ -82,3 +82,39 @@ test('DOCX export records Markdown and DOCX hashes and contains core OOXML', asy
   assert.equal((await validateStandardArtifacts(root, project)).ok, false);
 });
 
+test('HWPX-only manifest validates and detects changed or missing output', async t => {
+  const { root, project, plan } = await setup(t);
+  await generateQualityReport(root, project, plan);
+  const { hwpx_path } = await exportPlanHwpx(root, project, plan);
+  const output = path.join(root, hwpx_path);
+  const valid = await validateStandardArtifacts(root, project);
+  assert.equal(valid.ok, true);
+  assert.equal(valid.results.find(item => item.file === 'document-manifest.json').status, 'valid');
+
+  const original = await fs.readFile(output);
+  await fs.appendFile(output, 'changed');
+  assert.equal((await validateStandardArtifacts(root, project)).results.find(item => item.file === 'document-manifest.json').status, 'invalid');
+
+  await fs.writeFile(output, original);
+  await fs.unlink(output);
+  const missing = await validateStandardArtifacts(root, project);
+  assert.equal(missing.ok, false);
+  assert.match(missing.results.find(item => item.file === 'document-manifest.json').error, /hwpx file is missing/);
+});
+
+test('manifest validates both exports and detects changes to either format', async t => {
+  const { root, project, plan } = await setup(t);
+  await generateQualityReport(root, project, plan);
+  const { docx_path } = await exportPlanDocx(root, project, plan);
+  const { hwpx_path } = await exportPlanHwpx(root, project, plan);
+  assert.equal((await validateStandardArtifacts(root, project)).ok, true);
+
+  const docx = path.join(root, docx_path);
+  const original = await fs.readFile(docx);
+  await fs.appendFile(docx, 'changed');
+  assert.match((await validateStandardArtifacts(root, project)).results.find(item => item.file === 'document-manifest.json').error, /docx hash mismatch/);
+
+  await fs.writeFile(docx, original);
+  await fs.appendFile(path.join(root, hwpx_path), 'changed');
+  assert.match((await validateStandardArtifacts(root, project)).results.find(item => item.file === 'document-manifest.json').error, /hwpx hash mismatch/);
+});
