@@ -16,6 +16,18 @@
 
 </div>
 
+## Try it first: get a proposal through conversation in Codex
+
+No install and no `rok` command needed. **Open this repository in Codex and say:**
+
+```text
+Following this repository's AGENTS.md, discuss my research idea with me, then draft a research proposal.
+```
+
+[`AGENTS.md`](AGENTS.md) is the agent. It assumes no default topic. When invoked it (1) asks one or two questions at a time about research type, format, participants, and timeline, never choosing a format for you; (2) offers 2-3 research directions with trade-offs and lets you choose; (3) summarizes questions, data, analysis, and ethics for your explicit agreement; and (4) writes `proposals/<topic>-v1.md` after a seven-point self-check. Evidence not checked against the literature is marked `[미확인: 문헌 확인 필요]`, and it never invents citations or numbers. Model and reasoning effort are pinned in [`.codex/config.toml`](.codex/config.toml). Literature collection, hash approvals, and independent review (the `rok` workflow below) are optional follow-ups. Recorded runs on different topics are in [`docs/demos/`](docs/demos/) (Korean).
+
+---
+
 https://github.com/user-attachments/assets/9dff1b4b-2aa1-4adc-8f84-1e53e637f918
 
 ## Why
