@@ -28,7 +28,7 @@
 
 [실제 대화 선택을 반영한 두 주제 초안](examples/chat-proposal/live-two-topics-2026-10-13/README.md) · [교육 질적 연구 합성 예시](examples/chat-proposal/education-qualitative/README.md) · [보건 양적 연구 합성 예시](examples/chat-proposal/health-quantitative/README.md) · [개발 과정과 확인 기준](docs/CHAT-PROPOSAL-DEVELOPMENT.md)
 
-**재현 상태:** 별도 새 Codex CLI 대화 두 건에서 질문과 답변 반영 초안은 확인했지만, 시험 호스트의 읽기 전용 정책으로 .md 파일 저장은 실패했습니다. [실행 기록](docs/CHAT-REPRODUCTION-2026-10-13.md)과 [외부 평가 패키지](docs/CHAT-EVALUATOR-PACKAGE.md)를 공개합니다. 파일이 실제 생성됐는지 확인하려면 쓰기 가능한 Codex 작업 폴더가 필요합니다. 채팅에 초안이 보인 것만으로 파일 생성 성공이라고 판정하지 않습니다.
+**재현 상태:** 별도 새 Codex CLI 대화 두 건에서 질문과 답변 반영 초안은 확인했지만, 시험 호스트의 읽기 전용 정책으로 .md 파일 저장은 실패했습니다. [실행 기록](docs/CHAT-REPRODUCTION-2026-10-13.md)과 [연구자 자가평가표](docs/CHAT-SELF-EVALUATION.md)를 공개합니다. 파일이 실제 생성됐는지 확인하려면 쓰기 가능한 Codex 작업 폴더가 필요합니다. 채팅에 초안이 보인 것만으로 파일 생성 성공이라고 판정하지 않습니다.
 
 **여기서 멈춰도 됩니다.** 이 초안은 문헌 근거를 확인한 최종 계획서가 아닙니다. 이후 문헌 검색·원문 파싱·근거 검토·보완본이 필요할 때만 아래 [전체 실행](#-시작하기)으로 넘어가며, 수집·반영 승인은 해당 파일 버전에 묶입니다. 채팅 초안은 호스트가 저장소 파일을 편집하는 기능이고, `rok run`의 제한된 워커 실행·검증을 수행했다는 뜻은 아닙니다.
 

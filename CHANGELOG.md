@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Replaced the recently added three-person chat evaluation package with a researcher self-evaluation checklist. Researchers can check file creation, evidence, method alignment, ethics, and format themselves; a self-score is optional and does not certify research quality.
+- Aligned the chat demonstrations and use-verification guidance with the existing researcher-controlled finalization rule. Automated checks and actual human observations remain separate.
+
 ## 0.7.0 - 2026-10-13
 
 - Added [docs/AGENT-DESIGN.md](docs/AGENT-DESIGN.md) (roles, LLM-versus-code boundary, execution loop, design decisions, each tied to its source file) and [docs/AUTONOMY.md](docs/AUTONOMY.md) (what runs after one approval, mandatory stop conditions, handling of ambiguous evidence, resume, and stated limits).

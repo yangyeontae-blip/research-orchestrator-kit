@@ -22,7 +22,7 @@ https://github.com/user-attachments/assets/9dff1b4b-2aa1-4adc-8f84-1e53e637f918
 
 Open this repository as a folder in Codex and ask: “Following this repository's AGENTS.md, discuss my new research idea with me and write a proposal draft.” The agent asks only for missing decisions, compares feasible directions, and writes a Markdown draft under the Git-ignored `workspace/` directory after you choose the research questions, data, and method. This does not require installing the ROK CLI. Unverified literature stays explicitly unverified; collection and full workflow approvals come later.
 
-See the [Korean chat demonstrations](examples/chat-proposal/README.md) for two different synthetic topics. For automated collection, independent review, and finalization, follow the CLI instructions below.
+See the [Korean chat demonstrations](examples/chat-proposal/README.md) for two different synthetic topics and the [researcher self-evaluation checklist](docs/CHAT-SELF-EVALUATION.md). You can inspect and score your own draft; no three-person external panel is required. For automated collection, a separate agent review, and researcher finalization, follow the CLI instructions below.
 ## Why
 
 Researchers still spend real time relaying files between chats, reconciling versions such as `plan_final_REAL.docx`, and reviving work that stopped on an error or usage limit. ROK hands that work to agents and keeps the researcher's time for the questions that matter: does this source really support this claim, and can this data answer this question?
