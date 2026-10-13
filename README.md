@@ -26,7 +26,7 @@
 
 에이전트는 이미 알려진 내용은 다시 묻지 않고, 연구를 결정하는 질문을 최대 3개씩 묻습니다. 예를 들어 **학생을 직접 연구할지, 교사의 지도 경험을 연구할지**와 **접근 가능한 자료**를 확인합니다. 연구자가 방향을 선택하면 연구문제–자료–분석–윤리를 맞춘 `workspace/<주제>/proposal-draft.md`를 작성하고 링크를 줍니다. 답을 받기 전에는 방법·표본·결과를 지어내지 않습니다.
 
-[질적 교육 연구 대화와 실제 초안](examples/chat-proposal/education-qualitative/README.md) · [양적 보건 연구 대화와 실제 초안](examples/chat-proposal/health-quantitative/README.md) · [개발 과정과 확인 기준](docs/CHAT-PROPOSAL-DEVELOPMENT.md)
+[실제 대화 선택을 반영한 두 주제 초안](examples/chat-proposal/live-two-topics-2026-10-13/README.md) · [교육 질적 연구 합성 예시](examples/chat-proposal/education-qualitative/README.md) · [보건 양적 연구 합성 예시](examples/chat-proposal/health-quantitative/README.md) · [개발 과정과 확인 기준](docs/CHAT-PROPOSAL-DEVELOPMENT.md)
 
 **여기서 멈춰도 됩니다.** 이 초안은 문헌 근거를 확인한 최종 계획서가 아닙니다. 이후 문헌 검색·원문 파싱·근거 검토·보완본이 필요할 때만 아래 [전체 실행](#-시작하기)으로 넘어가며, 수집·반영 승인은 해당 파일 버전에 묶입니다. 채팅 초안은 호스트가 저장소 파일을 편집하는 기능이고, `rok run`의 제한된 워커 실행·검증을 수행했다는 뜻은 아닙니다.
 
