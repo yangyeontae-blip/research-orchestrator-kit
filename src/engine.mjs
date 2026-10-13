@@ -113,6 +113,62 @@ export class Engine {
     }, { allowMissing: true });
   }
 
+  async importChatPlan(source, expectedSha256) {
+    const requested = typeof source === 'string' ? source : source?.path;
+    const relative = slash(path.relative(this.root, path.resolve(this.root, requested || '')));
+    if (!/^workspace\/[^/]+\/proposal-draft(?:-v[2-9][0-9]*)?\.md$/.test(relative)) {
+      throw new Error('Chat plan must be workspace/<topic>/proposal-draft.md (or a numbered revision)');
+    }
+    if (!/^[a-f0-9]{64}$/i.test(expectedSha256 || '')) throw new Error('Import requires the expected SHA-256');
+    return this.#transaction(async state => {
+      if (state.current_stage !== 'initialized' || state.tasks.length || Object.keys(state.artifacts).length) {
+        throw new Error('Import requires a newly initialized, empty workflow');
+      }
+      const plan = await this.artifact({ path: relative, sha256: expectedSha256, kind: 'plan' });
+      const projectDir = path.dirname(path.resolve(this.root, plan.path));
+      const projectId = path.basename(projectDir);
+      const briefPath = path.join(projectDir, 'research-brief.json');
+      if (await exists(briefPath)) {
+        const brief = await readJson(briefPath);
+        await new SchemaRegistry(this.root).assert('research-brief', brief);
+        if (brief.profile !== state.profile || brief.project_id !== projectId) throw new Error('Existing research brief does not match the imported plan profile or project');
+      } else {
+        const title = (await fs.readFile(path.resolve(this.root, plan.path), 'utf8')).match(/^#\s+(.+)$/m)?.[1]?.trim() || 'Imported chat proposal';
+        const brief = {
+          schema_version: 1, project_id: projectId, workflow_id: state.workflow_id,
+          title, idea: 'See the imported chat proposal; separate idea metadata is unconfirmed.',
+          profile: state.profile, entry_mode: 'direct_plan',
+          method: 'See the imported chat proposal; separate method metadata is unconfirmed.',
+          deadline: null, institution_guidance: '', sensitive_information: true,
+          apa_paper_type: 'not_applicable', created_at: now()
+        };
+        await fs.writeFile(briefPath, JSON.stringify(brief, null, 2) + '\n', { flag: 'wx' });
+      }
+      for (const [name, body] of [
+        ['literature-manifest.json', { schema_version: 1, project_id: projectId, searches: [], items: [], updated_at: now() }],
+        ['claim-ledger.json', { schema_version: 1, project_id: projectId, plan_sha256: plan.sha256, claims: [], updated_at: now() }]
+      ]) {
+        const target = path.join(projectDir, name);
+        if (!await exists(target)) await fs.writeFile(target, JSON.stringify(body, null, 2) + '\n', { flag: 'wx' });
+      }
+      const task = {
+        id: randomUUID(), request_id: `chat-import-${plan.sha256.slice(0, 12)}`,
+        workflow_id: state.workflow_id, cycle: state.cycle, stage: 'plan', branch: 'main',
+        role: 'research', status: 'completed', claimant: 'chat-author',
+        inputs: [], plan: null, report: null, context: 'Imported from the AGENTS.md chat path.',
+        user_decisions: [], unresolved_items: [], artifacts: [plan], attempts: [],
+        completion_level: 'generated', created_at: now(), completed_at: now()
+      };
+      state.tasks.push(task);
+      state.artifacts.plan = plan;
+      state.artifacts.plan_support = [];
+      state.project_dir = slash(path.dirname(plan.path));
+      state.current_stage = 'plan_use_verification';
+      state.history.push({ event: 'chat_plan_imported', task_id: task.id, path: plan.path, plan_sha256: plan.sha256, at: now() });
+      return { plan, task: this.#publicTask(task), metadata_to_confirm: ['research idea', 'method', 'deadline', 'institution guidance', 'sensitive information', ...(state.profile === 'apa7' ? ['APA paper type'] : [])] };
+    });
+  }
+
   async enqueue(request) {
     return this.#transaction(async state => this.#enqueue(state, request, false));
   }

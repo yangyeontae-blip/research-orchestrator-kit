@@ -16,6 +16,7 @@ Run commands from the project root or add `--root <path>`. `rok --help` prints t
 ## Researcher-facing commands
 
 - `rok new [--answers answers.json]`: asks for the idea, `generic`/APA 7/JQI profile, route, method, deadline, institution guidance, and sensitivity; creates `research-brief.json` and the first task.
+- `rok import-plan workspace/<topic>/proposal-draft.md --sha256 <hash>`: in a newly initialized, empty workflow, imports a chat-path draft at the expected SHA-256. It creates a research brief with explicit unconfirmed metadata if none exists, plus empty literature and claim ledgers; inspect and correct the listed metadata before `rok validate`. It enters the existing plan use-verification gate. Have a different person record `rok verify-use <task-id>`, then use the interactive `rok approve collection`. Import does not certify chat agreement or approve collection.
 - `rok next`: claims the next queued task or re-shows a running handoff after interruption. API providers require an interactive `SEND` confirmation for every call.
 - `rok finish <task-id>`: interactively records status and actual artifact paths. The engine verifies file hashes; `rok complete` remains available for JSON receipts.
 - `rok status [--json]`: shows stage, cycle, approvals, errors, and the optional video branch.

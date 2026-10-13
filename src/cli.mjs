@@ -42,6 +42,7 @@ const answersFile = takeOption('--answers', null);
 const projectOption = takeOption('--project', null);
 const queryOption = takeOption('--query', null);
 const planOption = takeOption('--plan', null);
+const sha256Option = takeOption('--sha256', null);
 const outputOption = takeOption('--output', null);
 const literatureId = takeOption('--id', null);
 const audience = takeOption('--audience', null);
@@ -404,6 +405,7 @@ function usage() {
     'rok literature search --query "..." | rok literature ingest <pdf|hwp|hwpx> [--id literature-id]',
     'rok video request [--audience ... --duration 90 --aspect 16:9 --notes ...]',
     'rok init --profile generic|apa7|jqi | enqueue <request.json> | claim <task-id> | complete <receipt.json>',
+    'rok import-plan workspace/<topic>/proposal-draft.md --sha256 <64-character SHA-256>',
     'rok approve <collection|revision|video> [approval.json] | verify-use <task-id> [verification.json]   (interactive terminal only)',
     'rok collect-more [--gaps "..."] | finalize [--document docx|hwpx] | reopen [--reason "..."]   (interactive terminal only)',
     'rok rework <task-id> [--feedback "..."]   (interactive terminal only) | release <task-id> [--reason "..."] | retry <task-id> [--rebind] [--root path]'
@@ -427,6 +429,7 @@ try {
     const answers = answersFile ? await inputJson(answersFile) : await promptResearchBrief();
     result = await createResearchProject(root, answers);
   } else if (command === 'next') result = await nextAction();
+  else if (command === 'import-plan') result = await engine.importChatPlan(args[0], sha256Option);
   else if (command === 'init') {
     if (!profile) throw new Error('Select a research-plan profile explicitly: --profile generic|apa7|jqi');
     result = await engine.init({ profile });
