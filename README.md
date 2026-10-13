@@ -7,9 +7,9 @@
 **연구 아이디어를 근거 있는 계획서와 설계도 영상까지. 실행은 Codex·Claude에게 맡기고, 연구자는 판단이 필요한 순간에만 결정합니다.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.6.1-5EEAD4)
+![version](https://img.shields.io/badge/version-0.6.2-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-99%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-100%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [소개 영상](#-소개-영상) · [무엇이 달라지나](#-무엇이-달라지나) · [연구 흐름](#-연구-흐름) · [연구자의 판단](#-연구자가-판단하는-순간) · [시작하기](#-시작하기) · [English](README.en.md)
@@ -183,9 +183,9 @@ rok rework <task-id> --feedback "..." | release <task-id> | retry <task-id> --re
 npm run verify
 ```
 
-테스트 99개, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
+테스트 100개, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
 
-**실제 모델로 전 과정을 끝까지 실행했습니다.** 합성 아이디어 하나를 Claude Code와 실제 Crossref·OpenAlex·공개 원문으로 탐색 수집 → 초안 → 집중 수집 → 독립 검토 → 재작업 → 보완본(자동 검사 10/10) → 최종 확정까지 진행했습니다. 사람의 확인이 필요한 관문은 합성 운영자 이름으로 기록했고 연구자의 판단으로 기록하지 않았습니다. 이 실행에서 드러난 문제(초안의 근거 순환, 원문 다운로드 실패, 논문 속 저자 이메일로 인한 중단, 근거 장부의 쪽 번호·문장 오류, 서술형 인용 미인식 등)를 모두 고쳤습니다. 단계별 결과와 아직 확인하지 않은 범위(KCI 실제 계정)는 [검증 수준](docs/chat-execution.md#검증-수준)에 있습니다.
+**실제 모델로 전 과정을 끝까지 실행했습니다.** 합성 아이디어 하나를 Claude Code와 실제 Crossref·OpenAlex·공개 원문으로 탐색 수집 → 초안 → 집중 수집 → 독립 검토 → 재작업 → 보완본(자동 검사 10/10) → 최종 확정까지 진행했습니다. 사람의 확인이 필요한 관문은 합성 운영자 이름으로 기록했고 연구자의 판단으로 기록하지 않았습니다. 이 실행에서 드러난 문제(초안의 근거 순환, 원문 다운로드 실패, 논문 속 저자 이메일로 인한 중단, 근거 장부의 쪽 번호·문장 오류, 서술형 인용 미인식 등)를 모두 고쳤습니다. Codex CLI도 기본 설정 그대로 처음부터 실행해 계획서 생성을 확인했습니다. KCI는 실제 서버 응답(키 없음·잘못된 키)까지 확인했고, 유효한 인증키로 결과를 받는 것은 연구자 본인의 키가 필요합니다. 단계별 결과는 [검증 수준](docs/chat-execution.md#검증-수준)에 있습니다.
 
 ## 🗂️ 저장소 구조
 
@@ -205,7 +205,7 @@ research-orchestrator-kit/
 │  └─ cli.mjs
 ├─ profiles/   schemas/   prompts/
 ├─ examples/                # 실제 연구자료 없는 합성 사례
-├─ tests/                   # node:test 99개
+├─ tests/                   # node:test 100개
 └─ docs/                    # 판단 기준 · 설계 · CLI · 검증 · 개인정보 · 영상 소스
 ```
 

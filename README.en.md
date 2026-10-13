@@ -7,9 +7,9 @@
 **From a research idea to an evidence-backed proposal and a blueprint video. Codex and Claude do the work inside a scope you approve once; you are asked only when a research decision is needed.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.6.1-5EEAD4)
+![version](https://img.shields.io/badge/version-0.6.2-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-99%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-100%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [한국어](README.md) · [Video player](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [CLI reference](docs/CLI-REFERENCE.md) · [Researcher judgment](docs/RESEARCHER-JUDGMENT.md)
@@ -50,7 +50,7 @@ At each stop you decide: `rok verify-use`, `rok approve collection`, `rok approv
 
 ## Verification
 
-`npm run verify` runs 99 tests, synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI covers Ubuntu and Windows with Node.js 20 and 22. A synthetic case was run end to end with real Claude Code calls and live Crossref/OpenAlex/open-access collection, from exploratory search through review, rework, a revision passing every automated check, and `finalize`; human gates were recorded as a labeled synthetic operator, never as a researcher. KCI live calls are not yet verified (no API key in this environment).
+`npm run verify` runs 100 tests, synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI covers Ubuntu and Windows with Node.js 20 and 22. A synthetic case was run end to end with real Claude Code calls and live Crossref/OpenAlex/open-access collection, from exploratory search through review, rework, a revision passing every automated check, and `finalize`; human gates were recorded as a labeled synthetic operator, never as a researcher. A clean Codex CLI run with default limits produced a plan and stopped at the gate. The live KCI server was checked for missing and invalid keys (its reason is shown without the key); a search with a valid key needs the researcher's own KCI key.
 
 ## License
 

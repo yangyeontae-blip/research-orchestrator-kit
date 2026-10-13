@@ -11,6 +11,11 @@ export function parseKci(xml){
 export async function searchKci(query,{key=process.env.KCI_API_KEY,fetchImpl=fetch,rows=20}={}){
  if(!key)throw new Error('KCI_API_KEY unavailable; Korean literature coverage limited');
  const url=new URL('https://open.kci.go.kr/po/openapi/openApiSearch.kci');url.search=new URLSearchParams({apiCode:'articleSearch',key,title:query,page:'1',displayCount:String(Math.min(rows,50))});
- try{const response=await fetchImpl(url.href,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('HTTP error');return parseKci(await response.text());}
- catch{throw new Error('KCI request failed or unsupported response; check official API access. Credentials are not logged.');}
+ let text='';
+ try{const response=await fetchImpl(url.href,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('HTTP error');text=await response.text();return parseKci(text);}
+ catch{
+  // KCI answers errors with HTTP 200 and <resultMsg> (checked live 2026-10-13: "등록되지 않은 key 입니다."); show that reason, never the key.
+  const reason=values(text,'resultMsg')[0]?.slice(0,120).replace(key,'[key]');
+  throw new Error(`KCI request failed${reason?`: ${reason}`:' or unsupported response'}; check official API access. Credentials are not logged.`);
+ }
 }

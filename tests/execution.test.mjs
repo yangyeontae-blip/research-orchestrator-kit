@@ -129,3 +129,9 @@ test('a CLI that reports its error on stdout still produces a readable failure',
  await assert.rejects(execute(process.execPath,['-e','process.stdout.write(JSON.stringify({is_error:true,result:"Usage limit reached"}));process.exit(1)']),/Usage limit reached/);
  assert.match(workerFailure('Worker exited 1: {"is_error":true,"result":"Usage limit reached"}'),/usage limit/);
 });
+
+test('a KCI error response shows its reason but never the key',async()=>{
+ const xml='<?xml version="1.0"?><MetaData><inputData><key>secret-key-value</key></inputData><outputData><result><resultMsg>등록되지 않은 key 입니다.</resultMsg></result></outputData></MetaData>';
+ const error=await searchKci('q',{key:'secret-key-value',fetchImpl:async()=>({ok:true,text:async()=>xml})}).catch(e=>e);
+ assert.match(error.message,/등록되지 않은 key/);assert.doesNotMatch(error.message,/secret-key-value/);
+});

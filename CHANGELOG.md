@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.2 - 2026-10-13
+
+- Checked the live KCI server: a missing key records limited Korean coverage, and an invalid key now shows the reason KCI returns ("등록되지 않은 key 입니다.") without the key. A search with a valid key needs the researcher's own KCI key.
+- Verified a clean Codex CLI run with the default call limit (plan and design table, stopped at the use-verification gate).
+
 ## 0.6.1 - 2026-10-13
 
 - Ran a synthetic case end to end with real Claude Code calls and live Crossref/OpenAlex/open-access collection, from idea to `finalize` (gates recorded as a labeled synthetic operator, never as a researcher). Fixed everything the run exposed:
