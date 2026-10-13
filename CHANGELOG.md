@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Unified the two chat-path sections in `AGENTS.md` into one protocol (steps 0-4). Added a write check before the discussion, a minimum-content table and length target for the draft, a literature plan when search is unavailable, an appendix that quotes the user's agreement verbatim, and an eight-point self-check. The draft location is now `workspace/<topic>/proposal-draft.md`; a missing configured model no longer stops the work.
+- Added `tests/chat-protocol.test.mjs` so the protocol structure and README links cannot silently regress, and `docs/CODEX-TODO.md` listing the work that needs a real Codex run (including the still-missing successful file-save record).
+- Replaced the recently added three-person chat evaluation package with a researcher self-evaluation checklist. Researchers can check file creation, evidence, method alignment, ethics, and format themselves; a self-score is optional and does not certify research quality.
+- Aligned the chat demonstrations and use-verification guidance with the existing researcher-controlled finalization rule. Automated checks and actual human observations remain separate.
+
 ## 0.7.0 - 2026-10-13
 
 - Added [docs/AGENT-DESIGN.md](docs/AGENT-DESIGN.md) (roles, LLM-versus-code boundary, execution loop, design decisions, each tied to its source file) and [docs/AUTONOMY.md](docs/AUTONOMY.md) (what runs after one approval, mandatory stop conditions, handling of ambiguous evidence, resume, and stated limits).
