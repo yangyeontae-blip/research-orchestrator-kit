@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 - 2026-10-13
+
+- Added [docs/AGENT-DESIGN.md](docs/AGENT-DESIGN.md) (roles, LLM-versus-code boundary, execution loop, design decisions, each tied to its source file) and [docs/AUTONOMY.md](docs/AUTONOMY.md) (what runs after one approval, mandatory stop conditions, handling of ambiguous evidence, resume, and stated limits).
+- Added `npm run eval` (`scripts/eval-evidence.mjs`): a seeded fault-injection evaluation of the quote-location check with two baselines, now step 5 of `npm run verify`. Results and their limits are in [docs/EVALUATION.md](docs/EVALUATION.md).
+- README opens with an agent-design summary in Korean and English.
+- Version bumped to 0.7.0 across package, lockfile, citation file, and badges. No runtime behavior of the workflow engine changed.
+
 ## 0.6.2 - 2026-10-13
 
 - Checked the live KCI server: a missing key records limited Korean coverage, and an invalid key now shows the reason KCI returns ("등록되지 않은 key 입니다.") without the key. A search with a valid key needs the researcher's own KCI key.

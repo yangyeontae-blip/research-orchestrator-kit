@@ -7,12 +7,12 @@
 **연구 아이디어를 근거 있는 계획서와 설계도 영상까지. 실행은 Codex·Claude에게 맡기고, 연구자는 판단이 필요한 순간에만 결정합니다.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.6.2-5EEAD4)
+![version](https://img.shields.io/badge/version-0.7.0-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
 ![tests](https://img.shields.io/badge/tests-100%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
-[소개 영상](#-소개-영상) · [무엇이 달라지나](#-무엇이-달라지나) · [연구 흐름](#-연구-흐름) · [연구자의 판단](#-연구자가-판단하는-순간) · [시작하기](#-시작하기) · [English](README.en.md)
+[소개 영상](#-소개-영상) · [에이전트 설계](#-에이전트-설계-한눈에) · [무엇이 달라지나](#-무엇이-달라지나) · [연구 흐름](#-연구-흐름) · [연구자의 판단](#-연구자가-판단하는-순간) · [시작하기](#-시작하기) · [English](README.en.md)
 
 </div>
 
@@ -29,6 +29,22 @@ https://github.com/user-attachments/assets/9dff1b4b-2aa1-4adc-8f84-1e53e637f918
 </div>
 
 7번째 장면은 이 저장소의 블루프린트 렌더러가 합성 계획서로 실제로 만든 화면입니다. 나머지는 코드로 만든 모션 그래픽이고, 나레이션은 TTS, 음악과 효과음은 코드로 합성했습니다. 소스와 대본은 [`docs/video/v0.6/`](docs/video/v0.6/)에 있습니다.
+
+## 🧠 에이전트 설계 한눈에
+
+ROK는 **결정론적 하네스 안에서 도구 없는 LLM 워커를 부리는 멀티 에이전트 오케스트레이터**입니다.
+
+| 누가 | 무엇을 | 예 |
+|---|---|---|
+| 🤖 모델 워커 (study·research·review·video) | 글을 쓰고 판단을 제안합니다. 도구·셸·승인 권한이 없고, 승인된 텍스트만 받아 스키마를 지킨 JSON만 돌려줍니다. | 계획서 초안, 독립 검토, 인용 제안 |
+| ⚙️ 하네스 (코드) | 검색·원문 수집·파싱·해시 결속·인용 위치 대조·상태 전이·재개·상한을 **코드로** 처리합니다. 모델이 해시나 문장을 베끼지 않게 ROK가 채웁니다. | `src/execution.mjs`, `src/evidence*.mjs` |
+| 🧑‍⚖️ 연구자 | 범위·수집·보완·사용 검증·`finalize` 다섯 관문에서만 결정합니다. | `rok authorize` … `rok finalize` |
+
+- **자율:** 한 번 승인한 범위(입력 해시·검색어·호출 12회·유료 API 0원) 안에서는 멈추지 않고 수집 → 작성 → 독립 검토 → 보완 수집(최대 2회)을 이어갑니다.
+- **정지:** 사람의 결정이 필요한 관문, 호출 상한, 사용량 한도, 해시 불일치, 필수 산출물 누락에서는 반드시 멈추고 산출물을 보존합니다.
+- **근거:** 모델이 제안한 인용은 해당 쪽에 실제로 있을 때만 근거로 셉니다. 결함을 주입한 합성 인용 140건을 **100% 걸러내고 정상 40건은 하나도 거부하지 않았습니다**(단순 문자열 일치 기준선: 57% 검출, 정상 50% 거부). 의미상 지지 여부는 자동 판정하지 않습니다.
+
+상세: [에이전트 설계](docs/AGENT-DESIGN.md) · [자율성 정책](docs/AUTONOMY.md) · [평가](docs/EVALUATION.md#evidence-check-fault-injection-v070)
 
 ## 💡 왜 필요한가
 
@@ -183,7 +199,7 @@ rok rework <task-id> --feedback "..." | release <task-id> | retry <task-id> --re
 npm run verify
 ```
 
-테스트 100개, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
+테스트 100개, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), 인용 대조 결함 주입 평가(`npm run eval`), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
 
 **실제 모델로 전 과정을 끝까지 실행했습니다.** 합성 아이디어 하나를 Claude Code와 실제 Crossref·OpenAlex·공개 원문으로 탐색 수집 → 초안 → 집중 수집 → 독립 검토 → 재작업 → 보완본(자동 검사 10/10) → 최종 확정까지 진행했습니다. 사람의 확인이 필요한 관문은 합성 운영자 이름으로 기록했고 연구자의 판단으로 기록하지 않았습니다. 이 실행에서 드러난 문제(초안의 근거 순환, 원문 다운로드 실패, 논문 속 저자 이메일로 인한 중단, 근거 장부의 쪽 번호·문장 오류, 서술형 인용 미인식 등)를 모두 고쳤습니다. Codex CLI도 기본 설정 그대로 처음부터 실행해 계획서 생성을 확인했습니다. KCI는 실제 서버 응답(키 없음·잘못된 키)까지 확인했고, 유효한 인증키로 결과를 받는 것은 연구자 본인의 키가 필요합니다. 단계별 결과는 [검증 수준](docs/chat-execution.md#검증-수준)에 있습니다.
 
@@ -224,6 +240,7 @@ research-orchestrator-kit/
 | [연구자의 판단](docs/RESEARCHER-JUDGMENT.md) | 자동으로 하는 일과 연구자가 정하는 일, 최종 확정 기준 |
 | [채팅 실행](docs/chat-execution.md) | 실행 범위, 채팅 연결, 검증 수준과 한계 |
 | [CLI 참조](docs/CLI-REFERENCE.md) | 모든 명령과 복구 절차 |
+| [에이전트 설계](docs/AGENT-DESIGN.md) · [자율성 정책](docs/AUTONOMY.md) | 역할·루프·LLM/코드 경계, 자율 범위와 멈춤 조건, 한계 |
 | [아키텍처](docs/ARCHITECTURE.md) · [설계·구현 보고서](REPORT.md) | 상태 모델, 승인 결속, 설계 결정 |
 | [실사용 검증](docs/USE-VERIFICATION.md) · [검증 범위](docs/EVALUATION.md) | 산출물별 확인 방법과 자동 검사의 범위 |
 | [클라우드 개인정보](docs/CLOUD-PRIVACY.md) · [개인정보·저작권](docs/PRIVACY-COPYRIGHT.md) · [보안](SECURITY.md) | 데이터 경계와 권리 |

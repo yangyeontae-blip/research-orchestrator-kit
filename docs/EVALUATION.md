@@ -6,13 +6,14 @@
 npm run verify
 ```
 
-The command runs five independent checks in order:
+The command runs six independent checks in order:
 
 1. The complete Node.js test suite.
 2. A privacy and release audit of publishable files, every reachable historical Git blob, and commit identities.
 3. The v0.1 deterministic synthetic lifecycle.
 4. Three v0.2 synthetic cases: APA 7 autoethnography, JQI interview, and generic quantitative research.
-5. An npm package dry run checked against the public allowlist.
+5. The evidence-check fault-injection evaluation (below).
+6. An npm package dry run checked against the public allowlist.
 
 ## Requirement-to-evidence matrix
 
@@ -59,6 +60,39 @@ The example uses invented institutions, authors, and research materials. It demo
 7. a revised plan that stops at a new collection gate.
 
 The example is a workflow evaluation. It is not evidence of research quality, retrieval accuracy, or empirical validity.
+
+## Evidence-check fault injection (v0.7.0)
+
+`npm run eval` (also step 5 of `npm run verify`) measures the one component that decides whether a model-proposed citation counts as support: the mechanical quote-location check (`src/evidence.mjs` `verifyEvidence`, plus `correctPages` in `src/evidence-bridge.mjs`). No model is called. A seeded generator (`--seed`, default 20261013) builds synthetic parsed PDFs and claim ledgers, injects known citation faults, and records whether each ledger is accepted. Two baselines are scored on the same cases:
+
+- **B0 no check** – accept the ledger as written, as an unguarded LLM pipeline would.
+- **B1 naive match** – accept when the quote is an exact substring of the cited page, with no whitespace/hyphenation normalization and no hash, plan, or relation checks.
+
+Result with 20 ledgers per case (9 cases, 180 ledgers; 40 honest, 140 faulty):
+
+| case | ledger | ROK accepts | B0 accepts | B1 accepts |
+|---|---|---|---|---|
+| valid_exact | honest | 20/20 | 20/20 | 20/20 |
+| valid_linebreak (PDF hyphenation and line breaks) | honest | 20/20 | 20/20 | 0/20 |
+| fabricated_quote | faulty | 0/20 | 20/20 | 0/20 |
+| altered_word (one word changed) | faulty | 0/20 | 20/20 | 0/20 |
+| wrong_page (quote exists on another page) | faulty | 0/20 | 20/20 | 0/20 |
+| hash_mismatch (parsed text does not belong to the cited document) | faulty | 0/20 | 20/20 | 20/20 |
+| claim_not_in_plan | faulty | 0/20 | 20/20 | 20/20 |
+| empty_quote | faulty | 0/20 | 20/20 | 0/20 |
+| bad_relation (relation not support/contradiction/context) | faulty | 0/20 | 20/20 | 20/20 |
+
+| metric | ROK | B0 no check | B1 naive match |
+|---|---|---|---|
+| fault detection (140 faulty) | 100% | 0% | 57% |
+| false rejection of honest ledgers (40) | 0% | 0% | 50% |
+| `wrong_page` repaired to the correct page by `correctPages` | 100% | – | – |
+
+How to read this honestly:
+
+- The faults are the ones the check was built to catch, so 100% detection shows the check works as specified and guards against regressions (the script exits non-zero if any fault is accepted or any honest ledger rejected). It does **not** estimate how often a real model's citations are wrong, and it says nothing about semantic support: a verbatim quote can still fail to support its claim (`semantic_verified` stays `false`).
+- B1 is a deliberately simple baseline. It shows why the normalization and the hash/plan/relation checks exist, not that no better checker could be built.
+- Everything here is synthetic and self-authored. Live model behavior is documented separately in [chat-execution.md](chat-execution.md) (two real end-to-end runs; in the recorded review, quotes that failed location checks were reported and not counted).
 
 ## End-user verification
 

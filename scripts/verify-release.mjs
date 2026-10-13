@@ -14,6 +14,7 @@ const checks = [
   ['full-history audit', [path.join(root, 'scripts', 'audit-public.mjs')]],
   ['v0.1 synthetic lifecycle', [path.join(root, 'examples', 'synthetic', 'run-demo.mjs')]],
   ['v0.2 synthetic cases', [path.join(root, 'examples', 'synthetic-v2', 'run-demo.mjs')]],
+  ['evidence fault-injection evaluation', [path.join(root, 'scripts', 'eval-evidence.mjs')]],
   ['npm package allowlist', [path.join(root, 'scripts', 'check-package.mjs')]]
 ];
 
@@ -26,4 +27,4 @@ for (const [label, args] of checks) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-process.stdout.write('\nRelease verification passed: tests, full-history privacy audit, synthetic cases, and npm package allowlist.\n');
+process.stdout.write('\nRelease verification passed: tests, full-history privacy audit, synthetic cases, evidence fault-injection evaluation, and npm package allowlist.\n');
