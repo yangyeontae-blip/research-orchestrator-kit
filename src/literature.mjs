@@ -96,16 +96,21 @@ export async function searchLiterature(root, projectDir, query, options = {}) {
   };
   const rows = Math.max(1,Math.min(options.rows || 20,50));
   const encoded = encodeURIComponent(query.trim());
-  const providers=['crossref','openalex',...(options.kci?['kci']:[])];
+  // A second OpenAlex request restricted to open access finds full texts that relevance ranking alone often misses.
+  const providers=['crossref','openalex','openalex_oa',...(options.kci?['kci']:[])];
   const requests=[
     fetchJson(`https://api.crossref.org/works?query.bibliographic=${encoded}&rows=${rows}`, options),
-    fetchJson(`https://api.openalex.org/works?search=${encoded}&per-page=${rows}`, options)
+    fetchJson(`https://api.openalex.org/works?search=${encoded}&per-page=${rows}`, options),
+    fetchJson(`https://api.openalex.org/works?search=${encoded}&filter=open_access.is_oa:true&per-page=${rows}`, options)
   ];
   if(options.kci)requests.push(searchKci(query,{fetchImpl:options.fetchImpl,rows}));
   const responses=await Promise.allSettled(requests);
   const failures = responses.flatMap((r,i)=>r.status==='rejected'?[{provider:providers[i],reason:r.reason.message}]:[]);
   if(failures.length===providers.length)throw new Error('All literature providers failed: '+failures.map(f=>f.reason).join('; '));
-  const found = deduplicateLiterature([...crossrefItems(responses[0].value), ...openAlexItems(responses[1].value),...(responses[2]?.value||[]).map(r=>({...r,doi:normalizeDoi(r.doi),normalized_title:normalizeTitle(r.title)}))]).slice(0, options.maxCandidates || 50);
+  const value = i => responses[i]?.status === 'fulfilled' ? responses[i].value : null;
+  const combined = deduplicateLiterature([...crossrefItems(value(0)), ...openAlexItems(value(1)), ...openAlexItems(value(2)), ...(value(3)||[]).map(r=>({...r,doi:normalizeDoi(r.doi),normalized_title:normalizeTitle(r.title)}))]);
+  // When the candidate cap trims the list, keep candidates with a public full text first (stable otherwise).
+  const found = [...combined.filter(item => item.oa_locations?.length), ...combined.filter(item => !item.oa_locations?.length)].slice(0, options.maxCandidates || 50);
   const cap=options.maxCandidates ?? 50;
   const merged=deduplicateLiterature([...manifest.items,...found]);
   const previousIds=new Set(manifest.items.map(i=>i.id));

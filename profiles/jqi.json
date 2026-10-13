@@ -44,10 +44,10 @@
   },
   "collection_gate": {
     "human_confirmation": true,
-    "minimum_score_exclusive": 9.0,
+    "minimum_score_exclusive": null,
     "minimum_rubric_total": 8,
     "require_hard_checks": true,
-    "note": "These score thresholds are workflow safeguards supplied by this toolkit, not official journal acceptance criteria."
+    "note": "No automated score threshold: the researcher decides. The toolkit requires hash-bound hard checks (draft checks for a first plan) and the researcher-entered rubric total."
   },
   "required_artifacts": {
     "study": ["study_record"],

@@ -11,7 +11,8 @@ export function execute(file, args, {cwd, input='', signal, timeout=300000, maxB
     child.on('error',e=>end(e));
     child.stdout.on('data',b=>{out+=b;if(Buffer.byteLength(out)>maxBytes){terminate();end(new Error('Worker output limit'));}});
     child.stderr.on('data',b=>{err=(err+b).slice(-2000);});
-    child.on('close',code=>end(code===0?null:new Error(`Worker exited ${code}: ${err}`),out));
+    // Some CLIs (Claude with --output-format json) report errors such as usage limits on stdout, not stderr.
+    child.on('close',code=>end(code===0?null:new Error(`Worker exited ${code}: ${err}${err.trim()?'':out.slice(-2000)}`),out));
     child.stdin.on('error',()=>{});child.stdin.end(input);
   });
 }

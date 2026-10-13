@@ -7,4 +7,4 @@
 - 효과음: FFmpeg `aevalsrc`·`anoisesrc`로 합성한 차임, 저음, 틱, 노이즈 스윕.
 - 글꼴: Noto Sans KR, JetBrains Mono (SIL Open Font License 1.1), `@remotion/google-fonts`로 렌더링 시 불러옴.
 - 렌더링: Remotion 4.0.534. Remotion은 자체 라이선스를 따름 (https://www.remotion.dev/license).
-- 나레이션: 없음. 자막이 대본을 전달함.
+- 나레이션: Google TTS(gTTS, 한국어)로 생성하고 FFmpeg로 1.18배 속도·앞뒤 무음 정리. Microsoft Edge TTS가 응답하면 그쪽을 우선 사용.

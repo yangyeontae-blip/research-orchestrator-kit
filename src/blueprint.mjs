@@ -8,14 +8,21 @@ import {readJson,writeJson,packageRoot} from './utils.mjs';
 import {execute} from './process.mjs';
 // Heading patterns cover Korean and English plan conventions; a section is only "confirmed" when a heading matches.
 const SECTIONS=[['problem','문제의식',/문제의식|문제\s*제기|문제와|필요성|서론|배경|problem|introduction|background|rationale|significance/i],['purpose','연구 목적',/목적|목표|purpose|aims?\b|objective/i],['questions','연구문제',/연구\s*문제|연구\s*질문|questions?/i],['concepts','개념',/개념|이론|분석\s*틀|concept|theor|framework/i],['data','자료',/자료|대상|참여자|표본|data|participant|sample|material/i],['analysis','분석',/분석|연구\s*방법|방법론|analysis|method/i],['ethics','윤리',/윤리|동의|IRB|ethic|consent/i],['contribution','예상 기여',/기대|기여|의의|contribution|expected|outcome|implication/i],['limitations','한계',/한계|범위|limitation|scope|boundar|delimit/i]];
-export async function createBlueprint(root,planPath,{previous}={}){
- const engine=new Engine(root),plan=await engine.artifact(planPath,'plan');const text=await fs.readFile(path.join(root,plan.path),'utf8');const lines=text.split(/\r?\n/);
- const headings=lines.flatMap((text,i)=>/^#{1,6}\s/.test(text)?[{text,line:i}]:[]);
- const sections=SECTIONS.map(([id,title,pattern])=>{
+// Splits a plan into the nine blueprint elements by heading; an element without a matching heading stays unconfirmed.
+export function planSections(text,plan=null){
+ const lines=String(text).split(/\r?\n/);
+ const headings=lines.flatMap((line,i)=>/^#{1,6}\s/.test(line)?[{text:line,line:i,level:line.match(/^#+/)[0].length}]:[]);
+ return SECTIONS.map(([id,title,pattern])=>{
   const index=headings.findIndex(h=>pattern.test(h.text));if(index<0)return {id,title,status:'unconfirmed',text:'계획서에서 해당 절을 확인하지 못했습니다.',source:null};
-  const start=headings[index].line,end=headings[index+1]?.line??lines.length;
-  return {id,title,status:'plan_excerpt_not_evidence_verification',text:lines.slice(start+1,end).join('\n').trim(),source:{path:plan.path,sha256:plan.sha256,start_line:start+2,end_line:end}};
+  // A section runs to the next heading of the same or a higher level, so its subheadings stay inside it.
+  const start=headings[index].line,end=headings.slice(index+1).find(h=>h.level<=headings[index].level)?.line??lines.length;
+  return {id,title,status:'plan_excerpt_not_evidence_verification',text:lines.slice(start+1,end).join('\n').trim(),source:plan?{path:plan.path,sha256:plan.sha256,start_line:start+2,end_line:end}:{start_line:start+2,end_line:end}};
  });
+}
+export async function createBlueprint(root,planPath,{previous}={}){
+ const engine=new Engine(root),plan=await engine.artifact(planPath,'plan');const text=await fs.readFile(path.join(root,plan.path),'utf8');
+ const headings=text.split(/\r?\n/).flatMap((line,i)=>/^#{1,6}\s/.test(line)?[{text:line,line:i}]:[]);
+ const sections=planSections(text,plan);
  const before=previous?await readJson(path.join(root,(await engine.artifact(previous)).path)):null;
  const changes=before?sections.map(s=>({id:s.id,changed:before.sections.find(b=>b.id===s.id)?.text!==s.text,before:before.sections.find(b=>b.id===s.id)?.text||'',after:s.text,reason:'Text difference only; researcher/reviewer explanation pending'})):[];
  const dir=path.join('.research-work','blueprints',plan.sha256,randomUUID());await fs.mkdir(path.join(root,dir),{recursive:true});

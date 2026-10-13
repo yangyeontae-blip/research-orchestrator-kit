@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.1 - 2026-10-13
+
+- Ran a synthetic case end to end with real Claude Code calls and live Crossref/OpenAlex/open-access collection, from idea to `finalize` (gates recorded as a labeled synthetic operator, never as a researcher). Fixed everything the run exposed:
+  - A first draft is held to draft checks (questions, feasibility, ethics, format, literature decisions); evidence, citation, and design-table checks apply to the revision and to `finalize`. The JQI automated score threshold is removed.
+  - Open-access downloads failed on newer Node DNS lookups; a second OpenAlex open-access query and full-text-first ordering find more public PDFs.
+  - Collected papers have printed e-mails and similar identifiers masked (and long texts capped) instead of blocking the run; the researcher's own inputs keep the strict check.
+  - Reviewers cite plan sentences (P1, P2, ...) and sources (S1, S2, ...) by id; ROK fills in exact text and hashes, corrects a page label only when the exact quote is on exactly one other page, and reports unmatched quotes without counting them.
+  - Evidence gaps are review findings, not a partial review; writers label unsupported claims as unverified.
+  - Revised plans get a claim ledger from verified quotes and a design table pinned to plan text; narrative and grouped citations are recognized.
+  - Model files without an extension or with JSON wrapped in Markdown are accepted; CLI errors printed on stdout (such as usage limits) are reported.
+- The introduction video now has Korean narration (Edge TTS, falling back to Google TTS) at 114 seconds.
+
 ## 0.6.0 - 2026-10-13
 
 - Completion is now the researcher's decision alone: removed the three-person external evaluation and the 9.5-point target, and added [docs/RESEARCHER-JUDGMENT.md](docs/RESEARCHER-JUDGMENT.md) describing what runs automatically and where the researcher decides.

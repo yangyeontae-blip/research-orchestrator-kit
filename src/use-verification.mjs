@@ -60,10 +60,13 @@ async function planChecks(root, artifact, specification) {
   try { await new SchemaRegistry(root).assert('quality-report', quality); }
   catch (error) { return [check('plan_quality_report', 'failed', `품질 보고서 형식 오류: ${error.message}`)]; }
   const hashMatches = quality.plan?.sha256 === artifact.sha256;
-  const hardChecks = quality.automated?.hard_checks_passed === true;
+  // A first draft precedes focused collection, so evidence, citation, and design-table checks wait for the revision.
+  const draft = specification.stage === 'plan' && typeof quality.automated?.draft_checks_passed === 'boolean';
+  const hardChecks = (draft ? quality.automated.draft_checks_passed : quality.automated?.hard_checks_passed) === true;
+  const label = draft ? '초안 기준 자동 검사(연구질문·실행 가능성·윤리·형식·문헌 결정)' : '자동 형식·장부 검사';
   return [
     check('plan_quality_report', hashMatches ? 'passed' : 'failed', hashMatches ? '현재 계획서 해시와 일치' : '품질 보고서의 계획서 해시 불일치'),
-    check('plan_automatic_checks', hardChecks ? 'passed' : 'failed', hardChecks ? '자동 형식·장부 검사 통과' : '자동 형식·장부 검사 미통과')
+    check('plan_automatic_checks', hardChecks ? 'passed' : 'failed', `${label} ${hardChecks ? '통과' : '미통과'}`)
   ];
 }
 

@@ -202,3 +202,22 @@ test('bundled profiles and schemas are used when the project root has none', asy
   const task = await engine.enqueue({ request_id: 'p', workflow_id: state.workflow_id, stage: 'plan', inputs: [{ path: 'idea.md' }] });
   assert.equal(task.stage, 'plan');
 });
+
+test('a revision sent back before its use check is redone as a revision under the same approval', async t => {
+  const { engine, state } = await setup(t);
+  await engine.enqueue({ request_id: 'p', workflow_id: state.workflow_id, stage: 'plan', inputs: [{ path: 'input.md' }] });
+  const draft = await runTask(engine, 'plan', [{ kind: 'plan', path: 'plan.md' }]);
+  await verifyPlan(engine, draft.id);
+  let status = await engine.status();
+  await engine.approve('collection', { workflow_id: state.workflow_id, human_confirmed: true, plan: status.artifacts.plan });
+  await runTask(engine, 'literature', [{ kind: 'collection_report', path: 'collection.md' }, { kind: 'parsed_text', path: 'parsed.md' }]);
+  await runTask(engine, 'review', [{ kind: 'review_report', path: 'review.md' }]);
+  status = await engine.status();
+  await engine.approve('revision', { workflow_id: state.workflow_id, human_confirmed: true, plan: status.artifacts.plan, report: status.artifacts.review_report, approved_items: ['R1'] });
+  const revision = await runTask(engine, 'revise', [{ kind: 'plan', path: 'plan-v2.md' }]);
+  assert.equal((await engine.status()).current_stage, 'revise_use_verification');
+  const again = await engine.rework(revision.id, { feedback: 'Add the missing reference entry' });
+  assert.equal(again.stage, 'revise');
+  assert.equal(again.report.sha256, revision.report.sha256);
+  assert.ok((await engine.status()).approvals.revision);
+});

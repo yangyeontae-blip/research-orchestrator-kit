@@ -14,10 +14,19 @@ function section(text, pattern) {
   return pattern.test(text);
 }
 
-function citationPairs(text) {
-  const [body, references = ''] = text.split(/\n#{1,3}\s*(?:참고문헌|References)\s*\n/i);
+export function citationPairs(text) {
+  // Accepts "## 참고 문헌", "## 5. References", "## Bibliography" and similar reference headings.
+  const [body, references = ''] = text.split(/\n#{1,3}\s*(?:[\dⅠ-Ⅻ]+[.)]?\s*)?(?:참고\s*문헌|references|bibliography|works cited)(?:\s*\([^)\n]*\))?\s*\n/i);
   const citations = new Set();
-  for (const match of body.matchAll(/\(([\p{L}][\p{L}\p{M}'’.-]+)(?:\s+(?:외|et al\.))?,?\s*(\d{4}[a-z]?)\)/gu)) {
+  // Parenthetical citations, including "(Jiao & Wang, 2026)" and "(Kim, 2021; Lee et al., 2020)".
+  for (const group of body.matchAll(/\(([^()]*\d{4}[a-z]?[^()]*)\)/gu)) {
+    for (const part of group[1].split(';')) {
+      const match = part.match(/^\s*([\p{L}][\p{L}\p{M}'’.-]+)(?:\s*(?:&|and|와|과)\s*[\p{L}][\p{L}\p{M}'’.-]+|\s+(?:외|et al\.))?\s*,?\s*(\d{4}[a-z]?)\s*$/u);
+      if (match) citations.add(`${match[1].toLowerCase()}|${match[2]}`);
+    }
+  }
+  // Narrative citations: "Jiao & Wang (2026)", "Nair et al. (2024)", "김철수(2021)".
+  for (const match of body.matchAll(/(?<![\p{L}])(\p{Lu}[\p{L}\p{M}'’.-]+|[가-힣]{2,4})(?:\s+(?:et al\.|외)|\s*(?:&|and|와|과)\s*[\p{Lu}가-힣][\p{L}\p{M}'’.-]*)?\s*\((\d{4}[a-z]?)\)/gu)) {
     citations.add(`${match[1].toLowerCase()}|${match[2]}`);
   }
   const refs = new Set();
@@ -31,6 +40,9 @@ function citationPairs(text) {
     uncitedReferences: [...refs].filter(key => !citations.has(key))
   };
 }
+
+// Checks a first draft can meet before focused collection; evidence, citation, and design-table checks wait for the revision.
+const DRAFT_CHECKS = new Set(['question_scope', 'feasibility', 'ethics', 'profile_format', 'literature_decisions']);
 
 function check(id, label, passed, evidence) {
   return { id, label, passed: Boolean(passed), evidence, source: 'automated' };
@@ -77,13 +89,13 @@ export async function generateQualityReport(root, projectDir, planPath, options 
   );
   const metadataOnlyCount = ledger.claims.filter(item => item.verification_status === 'metadata_only').length;
   const questions = section(text, /연구\s*문제|연구\s*질문|research questions?/i);
-  const data = section(text, /자료\s*수집|자료원|participants?|data sources?|sampling/i);
+  const data = section(text, /자료\s*수집|자료\s*원|연구\s*자료|참여자|participants?|data sources?|data and materials|sampling/i);
   const analysis = section(text, /자료\s*분석|분석\s*방법|analysis/i);
   const ethics = section(text, /연구\s*윤리|익명|동의|irb|ethic/i);
   const feasibility = Boolean(brief.deadline) && section(text, /일정|timeline|추진/i);
-  const references = /참고문헌|references/i.test(text);
+  const references = /참고\s*문헌|references|bibliography/i.test(text);
   const profileFormat = brief.profile === 'apa7'
-    ? (brief.apa_paper_type !== 'not_applicable' && /참고문헌|references/i.test(text))
+    ? (brief.apa_paper_type !== 'not_applicable' && /참고\s*문헌|references|bibliography/i.test(text))
     : brief.profile === 'jqi'
       ? (/국문\s*요약|초록/i.test(text) && /abstract/i.test(text) && /주제어|keywords/i.test(text))
       : true;
@@ -106,6 +118,7 @@ export async function generateQualityReport(root, projectDir, planPath, options 
     automated: {
       score,
       hard_checks_passed: checks.every(item => item.passed),
+      draft_checks_passed: checks.filter(item => DRAFT_CHECKS.has(item.id)).every(item => item.passed),
       checks,
       limitations: [
         '자동 검사는 대응표 문구·출처 연결·인용의 기계적 일치만 확인하며 연구의 학술적 타당성을 판정하지 않는다.',
@@ -129,6 +142,7 @@ export async function generateQualityReport(root, projectDir, planPath, options 
     `- 프로필: ${report.profile}`,
     `- 자동 검사 점수: ${score}/10`,
     `- 자동 하드 체크: ${report.automated.hard_checks_passed ? '통과' : '미통과'}`,
+    `- 초안 기준 검사(근거·인용·대응표 제외, 첫 계획서에 적용): ${report.automated.draft_checks_passed ? '통과' : '미통과'}`,
     `- AI 평가: ${report.ai_assessment ? '기록됨' : '미실시'}`,
     `- 사람 평가: ${report.human_assessment ? '기록됨' : '미실시'}`,
     '', '## 자동 검사', '',

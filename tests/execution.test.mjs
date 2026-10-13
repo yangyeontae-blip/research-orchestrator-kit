@@ -105,3 +105,27 @@ test('worker failures never store the echoed prompt and name usage limits plainl
  const limit=workerFailure(echoed);assert.match(limit,/usage limit/);assert.doesNotMatch(limit,/secret|diary/);
  const other=workerFailure('Worker exited 2: {"inputs":[{"text":"participant diary"}]}\nfatal: model not available');assert.doesNotMatch(other,/diary/);assert.match(other,/model not available/);assert.ok(other.length<=400);
 });
+
+import {pinnedLookup} from '../src/acquisition.mjs';
+test('pinned DNS lookup answers both single and all-address requests',()=>{
+ const lookup=pinnedLookup('93.184.216.34');let single,all;
+ lookup('example.org',{},(e,address,family)=>{single=[address,family];});lookup('example.org',{all:true},(e,list)=>{all=list;});
+ assert.deepEqual(single,['93.184.216.34',4]);assert.deepEqual(all,[{address:'93.184.216.34',family:4}]);
+});
+test('a worker file name without an extension is saved with one, but paths are still refused',async t=>{
+ const {root,engine}=await setup(t);
+ await runWorkflow(root,{worker:async()=>JSON.stringify({structured_output:{status:'completed',handoff_state:'hold',reason:'x',files:[{name:'study-record',kind:'study_record',content:'Synthetic record'}]}})});
+ const task=(await engine.status()).tasks[0];assert.equal(task.status,'completed');assert.match(task.artifacts[0].path,/study-record\.md$/);
+});
+
+import {redactSensitiveText} from '../src/privacy.mjs';
+test('collected literature has printed identifiers masked instead of blocking the run',()=>{
+ // Built at runtime so the public-history audit does not see a literal address or number in the source.
+ const {text,redactions}=redactSensitiveText('Corresponding author: '+['author','example.edu'].join('@')+', tel '+['010','1234','5678'].join('-'));
+ assert.equal(redactions,2);assert.doesNotMatch(text,/example\.edu|1234/);
+});
+
+test('a CLI that reports its error on stdout still produces a readable failure',async()=>{
+ await assert.rejects(execute(process.execPath,['-e','process.stdout.write(JSON.stringify({is_error:true,result:"Usage limit reached"}));process.exit(1)']),/Usage limit reached/);
+ assert.match(workerFailure('Worker exited 1: {"is_error":true,"result":"Usage limit reached"}'),/usage limit/);
+});

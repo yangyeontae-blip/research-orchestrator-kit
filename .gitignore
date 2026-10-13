@@ -16,7 +16,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.mp4
-!docs/media/research-orchestrator-kit-v0.6.mp4
+!docs/media/research-orchestrator-kit-v0.6.1.mp4
 !docs/video/v0.6/remotion/public/blueprint-clip.mp4
 
 # Local video render logs

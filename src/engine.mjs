@@ -198,7 +198,7 @@ export class Engine {
       if (specification?.kind !== (task.stage === 'video_render' ? 'video' : 'plan')) throw new Error('Use verification kind does not match the task');
       const actual = await this.artifact(specification.artifact);
       this.#sameBinding(actual, expected, 'Use verification is bound to another artifact version');
-      const report = await verifyArtifactUse(this.root, specification);
+      const report = await verifyArtifactUse(this.root, { ...specification, stage: task.stage });
       if (report.status === 'use_verified'
         && String(report.human_confirmation?.verified_by || '').trim().toLowerCase() === String(task.claimant || '').trim().toLowerCase()) {
         throw new Error('Independent use reviewer must differ from the task claimant');
@@ -543,10 +543,18 @@ export class Engine {
         const awaitingUse = state.current_stage === `${task.stage}_use_verification` && task.completion_level !== 'use_verified';
         const awaitingCollection = state.current_stage === 'collection_approval' && state.artifacts.plan?.sha256 === plan.sha256;
         if (!awaitingUse && !awaitingCollection) throw new Error('Plan rework is possible only while its use verification or collection approval is pending');
-        // A rework is a fresh plan task, so it does not depend on the earlier revision approval.
-        next = { stage: 'plan', inputs: [...task.inputs, plan] };
-        state.approvals.collection = null;
-        state.approvals.revision = null;
+        const approval = state.approvals.revision;
+        if (task.stage === 'revise' && awaitingUse && approval && approval.plan_sha256 === task.plan?.sha256 && approval.report_sha256 === task.report?.sha256) {
+          // A revision sent back before its use check is redone as a revision under the same approval,
+          // so the approved items and the verified review evidence still apply.
+          next = { stage: 'revise', inputs: task.inputs, plan: task.plan, report: task.report };
+          state.approvals.collection = null;
+        } else {
+          // Otherwise a rework is a fresh plan task, so it does not depend on the earlier revision approval.
+          next = { stage: 'plan', inputs: [...task.inputs, plan] };
+          state.approvals.collection = null;
+          state.approvals.revision = null;
+        }
       } else if (task.stage === 'review') {
         const report = this.#findArtifact(task, 'review_report');
         if (state.current_stage !== 'revision_approval' || state.artifacts.review_report?.sha256 !== report.sha256) {
@@ -767,6 +775,12 @@ export class Engine {
     }
   }
 
+  #planStage(state, plan) {
+    const producer = state.tasks.find(task => ['plan', 'revise'].includes(task.stage) && task.status === 'completed'
+      && (task.artifacts || []).some(item => item.kind === 'plan' && item.sha256 === plan.sha256));
+    return producer?.stage || null;
+  }
+
   async #validateCollectionGate(state, approval, plan) {
     const profile = await this.profile(state.profile);
     const gate = profile.collection_gate || {};
@@ -781,7 +795,9 @@ export class Engine {
       const report = await readJson(path.resolve(this.root, reportArtifact.path));
       await new SchemaRegistry(this.root).assert('quality-report', report);
       if (report.plan.sha256 !== plan.sha256) throw new Error('quality-report.json is bound to another plan hash; run rok validate again');
-      Object.assign(quality, { score: report.automated.score, hard_checks_passed: report.automated.hard_checks_passed, report: reportArtifact });
+      // A first draft cannot cite evidence that focused collection has not gathered yet; it is held to the draft checks.
+      const draft = this.#planStage(state, plan) === 'plan' && typeof report.automated.draft_checks_passed === 'boolean';
+      Object.assign(quality, { score: report.automated.score, hard_checks_passed: draft ? report.automated.draft_checks_passed : report.automated.hard_checks_passed, basis: draft ? 'draft_checks' : 'all_checks', report: reportArtifact });
     }
     if (gate.minimum_score_exclusive != null && !(Number(quality.score) > gate.minimum_score_exclusive)) {
       throw new Error(`Quality score must be greater than ${gate.minimum_score_exclusive}`);

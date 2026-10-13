@@ -475,7 +475,7 @@ function Sounds() {
   ];
   return (
     <>
-      <Audio src={staticFile('music.mp3')} volume={0.85} />
+      <Audio src={staticFile('music.mp3')} volume={timeline.narrated ? 0.38 : 0.85} />
       {timeline.scenes.filter(s => s.voice).map(s => <Sequence key={s.id} from={s.from + s.lead_frames}><Audio src={staticFile(s.voice)} /></Sequence>)}
       {cues.map(([name, from, volume], i) => <Sequence key={i} from={from}><Audio src={staticFile(`${name}.mp3`)} volume={volume} /></Sequence>)}
     </>

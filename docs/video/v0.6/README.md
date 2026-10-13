@@ -1,6 +1,6 @@
 # v0.6 소개 영상 소스
 
-97초, 1920×1080, 30fps, 한국어 자막, 합성 음악·효과음. "연구자는 판단하고, 에이전트는 실행한다"를 장면마다 실제 기능으로 보여줍니다. 화면 속 파일명·해시·건수·주장은 모두 합성 예시입니다.
+114초, 1920×1080, 30fps, 한국어 나레이션·자막, 합성 음악·효과음. "연구자는 판단하고, 에이전트는 실행한다"를 장면마다 실제 기능으로 보여줍니다. 화면 속 파일명·해시·건수·주장은 모두 합성 예시입니다.
 
 | # | 장면 | 보여주는 기능 |
 |---|---|---|
@@ -20,12 +20,12 @@
 ```bash
 cd docs/video/v0.6/remotion
 npm ci
-npm run audio      # 타이밍 · 자막 · 합성 음악 · 효과음 (edge-tts가 되면 나레이션도)
+npm run audio      # 나레이션 · 타이밍 · 자막 · 합성 음악 · 효과음
 npm run render     # rok-v0.6-raw.mp4 (Git 제외)
-npm run master     # 음량 정규화 → research-orchestrator-kit-v0.6.mp4
+npm run master     # 음량 정규화 → research-orchestrator-kit-v0.6.1.mp4
 npm run poster
 ```
 
-`npm run audio`는 `narration.json`의 대본으로 장면 길이와 `captions.srt`를 만듭니다. 이번 렌더링 당시 Microsoft Edge TTS가 403으로 응답해 나레이션 없이 자막과 음악으로 제작했습니다. 서비스가 다시 응답하면 같은 명령으로 나레이션이 들어간 버전을 만들 수 있습니다.
+`npm run audio`는 `narration.json`의 대본으로 나레이션을 만들고, 음성 길이에 맞춰 장면 길이와 `captions.srt`를 정합니다. 음성은 Microsoft Edge TTS를 먼저 시도하고, 응답하지 않으면 Google TTS(`pip install gTTS`, 실행 파일 위치는 `GTTS_CLI`)를 씁니다. 둘 다 안 되면 자막과 음악만으로 장면 길이를 정합니다. 이번 버전은 Edge TTS가 403으로 응답해 Google TTS로 만들었습니다. 영어 고유명사는 `speech` 필드에 한글 발음으로 적었습니다.
 
 `remotion/public/blueprint-clip.mp4`는 `examples/synthetic-v2/apa7-autoethnography/plan.md`로 `rok blueprint`와 블루프린트 렌더러를 실행한 결과에서 연구문제·개념(미확인)·질문→자료→분석 장면을 잘라낸 것입니다.

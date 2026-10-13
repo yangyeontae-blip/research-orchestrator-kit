@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software in academic work, please cite it using the metadata below."
 title: "Research Orchestrator Kit"
 type: software
-version: 0.6.0
+version: 0.6.1
 date-released: 2026-10-13
 authors:
   - family-names: "Contributors"

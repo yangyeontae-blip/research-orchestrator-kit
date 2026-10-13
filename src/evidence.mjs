@@ -13,7 +13,9 @@ export async function verifyEvidence(root,planBinding,ledger){
     const document=await engine.artifact(location.document);const parsed=await engine.artifact(location.parsed);const pages=await readJson(path.join(root,parsed.path));
     if(pages.sha256!==document.sha256)throw new Error('Parsed source hash mismatch');
     const page=pages.pages.find(p=>p.pdf_page===location.pdf_page);
-    if(!location.quote?.trim()||!page?.text.includes(location.quote))throw new Error('Quote absent from specified page');
+    // PDF text breaks lines and hyphenates words; compare with whitespace and soft hyphens normalized, nothing looser.
+    const norm=value=>String(value||'').normalize('NFKC').replace(/­/g,'').replace(/(\w)-\s+(\w)/g,'$1$2').replace(/\s+/g,' ').trim().toLowerCase();
+    if(!location.quote?.trim()||!page||!norm(page.text).includes(norm(location.quote)))throw new Error('Quote absent from specified page');
     if(!['support','contradiction','context'].includes(location.relation))throw new Error('Evidence relation required');
     if(location.printed_page!=null&&location.printed_page!==page.printed_page)throw new Error('Printed page unconfirmed');
   }catch(e){checks.push(e.message);}}

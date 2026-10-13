@@ -14,6 +14,7 @@
       "properties": {
         "score": { "type": "number", "minimum": 0, "maximum": 10 },
         "hard_checks_passed": { "type": "boolean" },
+        "draft_checks_passed": { "type": "boolean" },
         "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } },
         "limitations": { "type": "array", "items": { "type": "string" } }
       },

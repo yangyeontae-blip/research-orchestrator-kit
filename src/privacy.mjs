@@ -18,6 +18,21 @@ export function detectSensitiveText(text) {
   return findings;
 }
 
+// Published papers routinely print author e-mail addresses; mask identifiers instead of refusing public literature.
+export function redactSensitiveText(text) {
+  const patterns = [
+    [/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[이메일 가림]'],
+    [/(?<!\d)01[016789][ -]?\d{3,4}[ -]?\d{4}(?!\d)/g, '[전화번호 가림]'],
+    [/(?<!\d)\d{6}[ -]?[1-4]\d{6}(?!\d)/g, '[식별번호 가림]'],
+    [/(?:[A-Z]:[\\/]Users[\\/]|\/(?:Users|home)\/)[^\s/\\]+/gi, '[경로 가림]'],
+    [/(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]{16,}/g, '[키 가림]']
+  ];
+  let count = 0;
+  let result = text;
+  for (const [pattern, mask] of patterns) result = result.replace(pattern, () => { count += 1; return mask; });
+  return { text: result, redactions: count };
+}
+
 export async function prepareCloudFiles(root, bindings, options = {}) {
   const files = [];
   const findings = [];

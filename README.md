@@ -7,9 +7,9 @@
 **연구 아이디어를 근거 있는 계획서와 설계도 영상까지. 실행은 Codex·Claude에게 맡기고, 연구자는 판단이 필요한 순간에만 결정합니다.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.6.0-5EEAD4)
+![version](https://img.shields.io/badge/version-0.6.1-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-83%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-99%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [소개 영상](#-소개-영상) · [무엇이 달라지나](#-무엇이-달라지나) · [연구 흐름](#-연구-흐름) · [연구자의 판단](#-연구자가-판단하는-순간) · [시작하기](#-시작하기) · [English](README.en.md)
@@ -20,15 +20,15 @@
 
 ## 🎬 소개 영상
 
-https://github.com/user-attachments/assets/36a564eb-c83a-4041-b669-1b9d65dc9776
+https://github.com/user-attachments/assets/9dff1b4b-2aa1-4adc-8f84-1e53e637f918
 
 <div align="center">
 
-97초 · 한국어 자막 · 합성 예시 · [큰 화면 플레이어](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [원본 MP4](https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.0/research-orchestrator-kit-v0.6.mp4)
+114초 · 한국어 나레이션·자막 · 합성 예시 · [큰 화면 플레이어](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [원본 MP4](https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4)
 
 </div>
 
-7번째 장면은 이 저장소의 블루프린트 렌더러가 합성 계획서로 실제로 만든 화면입니다. 나머지는 코드로 만든 모션 그래픽이며 음악과 효과음도 코드로 합성했습니다. 소스와 대본은 [`docs/video/v0.6/`](docs/video/v0.6/)에 있습니다.
+7번째 장면은 이 저장소의 블루프린트 렌더러가 합성 계획서로 실제로 만든 화면입니다. 나머지는 코드로 만든 모션 그래픽이고, 나레이션은 TTS, 음악과 효과음은 코드로 합성했습니다. 소스와 대본은 [`docs/video/v0.6/`](docs/video/v0.6/)에 있습니다.
 
 ## 💡 왜 필요한가
 
@@ -183,9 +183,9 @@ rok rework <task-id> --feedback "..." | release <task-id> | retry <task-id> --re
 npm run verify
 ```
 
-테스트 83개, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
+테스트 99개, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
 
-실제 계정으로는 Codex CLI(공부 작업)와 Claude Code(아이디어 → 계획서 → 확인 관문에서 정지)를 확인했고, 블루프린트 영상 렌더링도 확인했습니다. 이 과정에서 산출물 종류 표기 오류, Windows npm 설치본 인식 문제, 실패 기록에 프롬프트가 남는 문제를 찾아 고쳤습니다. KCI 실제 계정 호출과 모든 단계를 실제 모델로 끝까지 돌리는 검증은 아직이며, [채팅 실행 안내](docs/chat-execution.md#검증-수준)에 범위를 구분해 기록했습니다.
+**실제 모델로 전 과정을 끝까지 실행했습니다.** 합성 아이디어 하나를 Claude Code와 실제 Crossref·OpenAlex·공개 원문으로 탐색 수집 → 초안 → 집중 수집 → 독립 검토 → 재작업 → 보완본(자동 검사 10/10) → 최종 확정까지 진행했습니다. 사람의 확인이 필요한 관문은 합성 운영자 이름으로 기록했고 연구자의 판단으로 기록하지 않았습니다. 이 실행에서 드러난 문제(초안의 근거 순환, 원문 다운로드 실패, 논문 속 저자 이메일로 인한 중단, 근거 장부의 쪽 번호·문장 오류, 서술형 인용 미인식 등)를 모두 고쳤습니다. 단계별 결과와 아직 확인하지 않은 범위(KCI 실제 계정)는 [검증 수준](docs/chat-execution.md#검증-수준)에 있습니다.
 
 ## 🗂️ 저장소 구조
 
@@ -205,7 +205,7 @@ research-orchestrator-kit/
 │  └─ cli.mjs
 ├─ profiles/   schemas/   prompts/
 ├─ examples/                # 실제 연구자료 없는 합성 사례
-├─ tests/                   # node:test 83개
+├─ tests/                   # node:test 99개
 └─ docs/                    # 판단 기준 · 설계 · CLI · 검증 · 개인정보 · 영상 소스
 ```
 

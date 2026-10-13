@@ -1,183 +1,183 @@
 {
   "fps": 30,
-  "total_frames": 2912,
-  "narrated": false,
+  "total_frames": 3417,
+  "narrated": "gtts",
   "scenes": [
     {
       "id": "relay",
       "from": 0,
-      "frames": 240,
-      "voice": null,
+      "frames": 261,
+      "voice": "vo/01-relay.mp3",
       "lead_frames": 18
     },
     {
       "id": "title",
-      "from": 240,
-      "frames": 236,
-      "voice": null,
+      "from": 261,
+      "frames": 247,
+      "voice": "vo/02-title.mp3",
       "lead_frames": 18
     },
     {
       "id": "scope",
-      "from": 476,
-      "frames": 300,
-      "voice": null,
+      "from": 508,
+      "frames": 427,
+      "voice": "vo/03-scope.mp3",
       "lead_frames": 18
     },
     {
       "id": "run",
-      "from": 776,
-      "frames": 356,
-      "voice": null,
+      "from": 935,
+      "frames": 430,
+      "voice": "vo/04-run.mp3",
       "lead_frames": 18
     },
     {
       "id": "literature",
-      "from": 1132,
-      "frames": 320,
-      "voice": null,
+      "from": 1365,
+      "frames": 391,
+      "voice": "vo/05-literature.mp3",
       "lead_frames": 18
     },
     {
       "id": "evidence",
-      "from": 1452,
-      "frames": 270,
-      "voice": null,
+      "from": 1756,
+      "frames": 339,
+      "voice": "vo/06-evidence.mp3",
       "lead_frames": 18
     },
     {
       "id": "blueprint",
-      "from": 1722,
+      "from": 2095,
       "frames": 360,
-      "voice": null,
+      "voice": "vo/07-blueprint.mp3",
       "lead_frames": 18
     },
     {
       "id": "recovery",
-      "from": 2082,
-      "frames": 280,
-      "voice": null,
+      "from": 2455,
+      "frames": 354,
+      "voice": "vo/08-recovery.mp3",
       "lead_frames": 18
     },
     {
       "id": "judgment",
-      "from": 2362,
-      "frames": 330,
-      "voice": null,
+      "from": 2809,
+      "frames": 395,
+      "voice": "vo/09-judgment.mp3",
       "lead_frames": 18
     },
     {
       "id": "close",
-      "from": 2692,
-      "frames": 220,
-      "voice": null,
+      "from": 3204,
+      "frames": 213,
+      "voice": "vo/10-close.mp3",
       "lead_frames": 18
     }
   ],
   "captions": [
     {
       "from": 18,
-      "to": 178,
+      "to": 231,
       "text": "연구자는 생각보다 많은 시간을, 파일을 옮기고 버전을 맞추고 멈춘 작업을 되살리는 데 씁니다."
     },
     {
-      "from": 258,
-      "to": 364,
+      "from": 279,
+      "to": 392,
       "text": "Research Orchestrator Kit 0.6."
     },
     {
-      "from": 364,
-      "to": 446,
+      "from": 392,
+      "to": 478,
       "text": "연구자는 판단하고, 에이전트는 실행합니다."
     },
     {
-      "from": 494,
-      "to": 567,
+      "from": 526,
+      "to": 637,
       "text": "시작할 때 한 번, 실행 범위를 확인합니다."
     },
     {
-      "from": 567,
-      "to": 742,
+      "from": 637,
+      "to": 905,
       "text": "목적과 형식, 보낼 파일과 해시, 검색어, 실행 도구와 작업량 상한, 그리고 유료 API 예산 0원까지."
     },
     {
-      "from": 794,
-      "to": 911,
+      "from": 953,
+      "to": 1098,
       "text": "승인된 범위 안에서는 Codex와 Claude가 실제로 일합니다."
     },
     {
-      "from": 911,
-      "to": 1102,
+      "from": 1098,
+      "to": 1335,
       "text": "탐색 수집부터 계획서 초안, 품질 보고서와 블루프린트까지 이어서 만들고, 판단이 필요한 순간에만 멈춥니다."
     },
     {
-      "from": 1150,
-      "to": 1216,
+      "from": 1383,
+      "to": 1466,
       "text": "문헌은 서지정보에서 끝나지 않습니다."
     },
     {
-      "from": 1216,
-      "to": 1317,
+      "from": 1466,
+      "to": 1594,
       "text": "공개 원문을 내려받아 제목이 맞는지 확인하고 파싱합니다."
     },
     {
-      "from": 1317,
-      "to": 1422,
+      "from": 1594,
+      "to": 1726,
       "text": "접근할 수 없거나 스캔본이면, 성공으로 처리하지 않습니다."
     },
     {
-      "from": 1470,
-      "to": 1578,
+      "from": 1774,
+      "to": 1928,
       "text": "핵심 주장은 문헌과 파일 해시, 쪽과 인용 위치까지 연결됩니다."
     },
     {
-      "from": 1578,
-      "to": 1674,
+      "from": 1928,
+      "to": 2065,
       "text": "인용한 문장이 그 쪽에 없으면 바로 불일치로 표시합니다."
     },
     {
-      "from": 1740,
-      "to": 1811,
+      "from": 2113,
+      "to": 2206,
       "text": "계획서에서 바로 설계도 영상을 만듭니다."
     },
     {
-      "from": 1811,
-      "to": 1940,
+      "from": 2206,
+      "to": 2375,
       "text": "질문과 자료와 분석이 이어지는지, 빠진 요소가 무엇인지 한눈에 보입니다."
     },
     {
-      "from": 2100,
-      "to": 2211,
+      "from": 2473,
+      "to": 2620,
       "text": "사용량 한도에 걸리거나 중단해도 완료한 작업은 그대로 남습니다."
     },
     {
-      "from": 2211,
-      "to": 2332,
+      "from": 2620,
+      "to": 2779,
       "text": "멈춘 자리에서 다시 시작하고, 유료 API로 몰래 넘어가지 않습니다."
     },
     {
-      "from": 2380,
-      "to": 2486,
+      "from": 2827,
+      "to": 2971,
       "text": "그리고 마지막 판단은 외부 점수가 아니라 연구자에게 있습니다."
     },
     {
-      "from": 2486,
-      "to": 2636,
+      "from": 2971,
+      "to": 3174,
       "text": "검토된 보완본과 근거, 문서 대조와 한계 기록을 확인한 뒤, 연구자가 직접 확정합니다."
     },
     {
-      "from": 2710,
-      "to": 2747,
+      "from": 3222,
+      "to": 3257,
       "text": "판단은 연구자에게."
     },
     {
-      "from": 2747,
-      "to": 2787,
+      "from": 3257,
+      "to": 3296,
       "text": "실행은 에이전트에게."
     },
     {
-      "from": 2787,
-      "to": 2882,
+      "from": 3296,
+      "to": 3387,
       "text": "Research Orchestrator Kit."
     }
   ]

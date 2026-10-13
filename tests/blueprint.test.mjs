@@ -40,3 +40,11 @@ test('a missing plan section stays unconfirmed instead of being filled in', asyn
   assert.equal(ethics.status, 'unconfirmed');
   assert.equal(ethics.source, null);
 });
+
+test('a blueprint section keeps its subsections', async t => {
+  const root = await toolkitFixture(t);
+  const { blueprint } = await blueprintOf(root, ['# 계획', '## 자료 원천', '### 합성 자료의 구성', '합성 초안 세 편을 사용한다.', '## 분석 방법', '코딩한다.'].join('\n'));
+  const data = blueprint.sections.find(s => s.id === 'data');
+  assert.match(data.text, /합성 초안 세 편/);
+  assert.doesNotMatch(data.text, /코딩한다/);
+});

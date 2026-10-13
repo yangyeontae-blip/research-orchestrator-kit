@@ -1,6 +1,6 @@
 // Builds timing, captions, music, and sound effects for the v0.6 video.
-// Narration uses edge-tts when the service is reachable; otherwise scenes are timed for reading and the
-// video carries the script as captions. Run: node docs/video/v0.6/build-audio.mjs [--no-tts]
+// Narration uses edge-tts, then gTTS (set GTTS_CLI if gtts-cli is not on PATH); without either, scenes are timed
+// for reading and the video carries the script as captions. Run: node docs/video/v0.6/build-audio.mjs [--no-tts]
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -26,7 +26,29 @@ const srtTime = value => {
 };
 const sentences = text => text.split(/(?<=[.?!])\s+/).map(item => item.trim()).filter(Boolean);
 
-let tts = !process.argv.includes('--no-tts');
+// Voices in order of preference: Microsoft Edge neural TTS, then Google TTS (gTTS, sped up slightly), then captions only.
+const engines = {
+  'edge-tts': (text, media) => run('edge-tts', ['--voice', narration.voice, `--rate=${narration.rate}`, '--text', text, '--write-media', media]),
+  gtts: (text, media) => {
+    const raw = `${media}.raw.mp3`;
+    run(process.env.GTTS_CLI || 'gtts-cli', ['--lang', 'ko', text, '--output', raw]);
+    run('ffmpeg', ['-y', '-v', 'error', '-i', raw, '-af', `atempo=${narration.gtts_tempo || 1.18},silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse`, '-ac', '2', '-b:a', '96k', media]);
+    execFileSync(process.execPath, ['-e', 'require("fs").rmSync(process.argv[1])', raw]);
+  }
+};
+const order = process.argv.includes('--no-tts') ? [] : ['edge-tts', 'gtts'].filter(name => !process.argv.includes(`--no-${name}`));
+let engine = null;
+for (const name of order) {
+  try {
+    engines[name](narration.scenes[0].speech || narration.scenes[0].text, path.join(voDir, 'probe.mp3'));
+    engine = name;
+    break;
+  } catch {
+    process.stdout.write(`${name} unavailable\n`);
+  }
+}
+await fs.rm(path.join(voDir, 'probe.mp3'), { force: true });
+let tts = Boolean(engine);
 const scenes = [];
 const captions = [];
 let cursor = 0;
@@ -34,16 +56,8 @@ for (const [index, scene] of narration.scenes.entries()) {
   const media = path.join(voDir, `${String(index + 1).padStart(2, '0')}-${scene.id}.mp3`);
   let voice = null;
   if (tts) {
-    try {
-      run('edge-tts', ['--voice', narration.voice, `--rate=${narration.rate}`, '--text', scene.speech || scene.text, '--write-media', media]);
-      voice = seconds(media);
-    } catch {
-      tts = false;
-      await fs.rm(voDir, { recursive: true, force: true });
-      await fs.mkdir(voDir, { recursive: true });
-      process.stdout.write('edge-tts unavailable; timing scenes for captions only\n');
-      for (const earlier of scenes) earlier.voice = null;
-    }
+    engines[engine](scene.speech || scene.text, media);
+    voice = seconds(media);
   }
   const spoken = voice ?? scene.text.replace(/\s+/g, '').length / readingRate;
   const duration = Math.max(scene.min_seconds, leadIn + spoken + tail);
@@ -62,7 +76,7 @@ for (const [index, scene] of narration.scenes.entries()) {
 if (!tts) for (const scene of scenes) scene.voice = null;
 
 const totalFrames = Math.round(cursor * fps);
-await fs.writeFile(path.join(here, 'remotion', 'src', 'timeline.json'), JSON.stringify({ fps, total_frames: totalFrames, narrated: tts, scenes, captions: captions.map(item => ({ from: Math.round(item.start * fps), to: Math.round(item.end * fps), text: item.text })) }, null, 2) + '\n');
+await fs.writeFile(path.join(here, 'remotion', 'src', 'timeline.json'), JSON.stringify({ fps, total_frames: totalFrames, narrated: engine, scenes, captions: captions.map(item => ({ from: Math.round(item.start * fps), to: Math.round(item.end * fps), text: item.text })) }, null, 2) + '\n');
 await fs.writeFile(path.join(here, 'captions.srt'), captions.map((item, i) => `${i + 1}\n${srtTime(item.start)} --> ${srtTime(item.end)}\n${item.text}\n`).join('\n'));
 
 // Music is synthesized sample by sample: a 96 BPM pad, plucked arpeggio, soft kick and hats with ducking.
@@ -124,4 +138,4 @@ for (const [name, [expr, duration]] of Object.entries(sfx)) {
 }
 run('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i', 'anoisesrc=d=0.9:c=pink:a=0.5', '-af', 'bandpass=f=1800:w=1600,afade=t=in:d=0.45,afade=t=out:st=0.45:d=0.45,volume=0.6', '-ac', '2', '-b:a', '128k', path.join(publicDir, 'whoosh.mp3')]);
 
-process.stdout.write(`${scenes.length} scenes, ${cursor.toFixed(1)} s, narration: ${tts ? 'edge-tts' : 'captions only'}\n`);
+process.stdout.write(`${scenes.length} scenes, ${cursor.toFixed(1)} s, narration: ${engine || 'captions only'}\n`);

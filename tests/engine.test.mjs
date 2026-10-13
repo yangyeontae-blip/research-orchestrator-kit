@@ -304,16 +304,21 @@ async function writeQualityReport(engine, plan, automated) {
   }));
 }
 
-test('JQI collection gate reads scores from the hash-bound quality report, not the approver', async t => {
+test('JQI collection gate reads checks from the hash-bound quality report, not the approver, and uses no score threshold', async t => {
   const { engine, state } = await fixture(t, 'jqi');
   const status = await draftPlan(engine, state, { supportArtifacts: true });
-  await writeQualityReport(engine, status.artifacts.plan, { score: 9.0, hard_checks_passed: true });
+  // A first draft is held to the draft checks: failing them blocks collection whatever the approver claims.
+  await writeQualityReport(engine, status.artifacts.plan, { score: 9.0, hard_checks_passed: true, draft_checks_passed: false });
   await assert.rejects(engine.approve('collection', {
     workflow_id: state.workflow_id,
     human_confirmed: true,
     plan: status.artifacts.plan,
     quality: { score: 10, rubric_total: 8, hard_checks_passed: true }
-  }), /greater than 9/);
+  }), /Hard checks/);
+  // Evidence-dependent checks may still fail on a first draft; a low overall score is not a gate.
+  await writeQualityReport(engine, status.artifacts.plan, { score: 6.3, hard_checks_passed: false, draft_checks_passed: true });
+  const draftOk = await new Engine(engine.root).status();
+  assert.equal(draftOk.current_stage, 'collection_approval');
   await writeQualityReport(engine, { path: 'plan.md', sha256: 'f'.repeat(64) }, { score: 10, hard_checks_passed: true });
   await assert.rejects(engine.approve('collection', {
     workflow_id: state.workflow_id, human_confirmed: true, plan: status.artifacts.plan, quality: { rubric_total: 8 }

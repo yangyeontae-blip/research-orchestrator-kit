@@ -8,11 +8,13 @@ import {readJson,writeJson,sha256Bytes} from './utils.mjs';
 export function publicIPv4(ip){
  const p=ip.split('.').map(Number);return p.length===4&&p.every(n=>Number.isInteger(n)&&n>=0&&n<256)&&!([0,10,127].includes(p[0])||p[0]>=224||p[0]===169&&p[1]===254||p[0]===172&&p[1]>=16&&p[1]<=31||p[0]===192&&[0,168].includes(p[1])||p[0]===100&&p[1]>=64&&p[1]<=127||p[0]===198&&[18,19,51].includes(p[1])||p[0]===203&&p[1]===0);
 }
+// Pin the vetted public address; newer Node asks for every address ({all:true}) and needs an array back.
+export const pinnedLookup=ip=>(_host,options,cb)=>options?.all?cb(null,[{address:ip,family:4}]):cb(null,ip,4);
 export async function downloadPublic(url,{maxBytes=20000000,redirects=4}={}){
  const u=new URL(url);if(u.protocol!=='https:'||u.username||u.password||u.port&&u.port!=='443')throw new Error('Only public HTTPS locations allowed');
  const ips=await resolve4(u.hostname);if(!ips.length||!ips.every(publicIPv4))throw new Error('Non-public download target');
  return new Promise((resolve,reject)=>{
-  const req=https.get(u,{lookup:(_h,_o,cb)=>cb(null,ips[0],4),headers:{'User-Agent':'research-orchestrator-kit'}},res=>{
+  const req=https.get(u,{lookup:pinnedLookup(ips[0]),headers:{'User-Agent':'research-orchestrator-kit'}},res=>{
    if([301,302,303,307,308].includes(res.statusCode)){res.resume();if(redirects<=0)return reject(new Error('Redirect limit'));downloadPublic(new URL(res.headers.location,u).href,{maxBytes,redirects:redirects-1}).then(resolve,reject);return;}
    if(res.statusCode!==200){res.resume();reject(new Error(`HTTP ${res.statusCode}`));return;}
    let size=0;const chunks=[];res.on('data',b=>{size+=b.length;if(size>maxBytes)req.destroy(new Error('Download size limit'));else chunks.push(b);});

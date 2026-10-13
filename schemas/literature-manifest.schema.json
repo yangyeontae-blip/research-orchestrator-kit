@@ -56,6 +56,7 @@
             "enum": [
               "crossref",
               "openalex",
+              "openalex_oa",
               "kci"
             ]
           }
@@ -132,6 +133,7 @@
             "enum": [
               "crossref",
               "openalex",
+              "openalex_oa",
               "user",
               "kci"
             ]

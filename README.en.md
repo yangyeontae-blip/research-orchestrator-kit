@@ -7,16 +7,16 @@
 **From a research idea to an evidence-backed proposal and a blueprint video. Codex and Claude do the work inside a scope you approve once; you are asked only when a research decision is needed.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.6.0-5EEAD4)
+![version](https://img.shields.io/badge/version-0.6.1-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-83%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-99%20passing-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [한국어](README.md) · [Video player](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [CLI reference](docs/CLI-REFERENCE.md) · [Researcher judgment](docs/RESEARCHER-JUDGMENT.md)
 
 </div>
 
-https://github.com/user-attachments/assets/36a564eb-c83a-4041-b669-1b9d65dc9776
+https://github.com/user-attachments/assets/9dff1b4b-2aa1-4adc-8f84-1e53e637f918
 
 ## Why
 
@@ -50,7 +50,7 @@ At each stop you decide: `rok verify-use`, `rok approve collection`, `rok approv
 
 ## Verification
 
-`npm run verify` runs 83 tests, synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI covers Ubuntu and Windows with Node.js 20 and 22. Real-account checks covered a Codex CLI study task and a Claude Code plan task that stopped correctly at the use-verification gate; KCI live calls and a full real-model run through every stage are not yet verified.
+`npm run verify` runs 99 tests, synthetic APA 7, JQI, and quantitative cases, the npm package allowlist, and a full-history privacy audit. CI covers Ubuntu and Windows with Node.js 20 and 22. A synthetic case was run end to end with real Claude Code calls and live Crossref/OpenAlex/open-access collection, from exploratory search through review, rework, a revision passing every automated check, and `finalize`; human gates were recorded as a labeled synthetic operator, never as a researcher. KCI live calls are not yet verified (no API key in this environment).
 
 ## License
 
