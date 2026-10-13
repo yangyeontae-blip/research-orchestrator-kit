@@ -24,7 +24,7 @@ const exists=file=>fs.access(file).then(()=>true,()=>false);
 export async function resolveShim(shim){
   const text=await fs.readFile(shim,'utf8').catch(()=>'');
   for(const [,target]of text.matchAll(/"%dp0%\\([^"%]+\.(?:exe|js|cjs|mjs))"/gi)){
-    const file=path.join(path.dirname(shim),target);if(!await exists(file))continue;
+    const file=path.join(path.dirname(shim),...target.split(/[\\/]+/));if(!await exists(file))continue;
     return /\.exe$/i.test(file)?{file,prefix:[]}:{file:process.execPath,prefix:[file]};
   }
   return null;
