@@ -83,7 +83,7 @@ At each stop you decide: `rok verify-use`, `rok approve collection`, `rok approv
 
 ## Verification
 
-`npm run verify` runs the full `node:test` suite, synthetic APA 7, JQI, and quantitative cases, the evidence fault-injection evaluation (`npm run eval`), the npm package allowlist, and a full-history privacy audit. CI covers Ubuntu and Windows with Node.js 20 and 22. Earlier [run notes](docs/chat-execution.md#검증-수준) report two synthetic Claude Code workflows through finalization and a Codex CLI draft; their raw state and event logs are not tracked in Git. The [evidence audit](docs/NATIVE-RUN-EVIDENCE-2026-10-14.md) distinguishes those notes from a new real Codex CLI run that saved a hash-checked draft and stopped before human use verification. A valid KCI key is still needed to confirm live search results.
+`npm run verify` runs the full `node:test` suite, synthetic APA 7, JQI, and quantitative cases, the evidence fault-injection evaluation (`npm run eval`), the npm package allowlist, and a full-history privacy audit. CI covers Ubuntu and Windows with Node.js 20 and 22. Earlier [run notes](docs/chat-execution.md#검증-수준) report two synthetic Claude Code workflows through finalization and a Codex CLI draft; their raw state and event logs are not tracked in Git. The [evidence audit](docs/records/NATIVE-RUN-EVIDENCE-2026-10-14.md) distinguishes those notes from a new real Codex CLI run that saved a hash-checked draft and stopped before human use verification. A valid KCI key is still needed to confirm live search results.
 
 ## License
 

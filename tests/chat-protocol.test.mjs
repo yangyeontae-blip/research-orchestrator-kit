@@ -38,7 +38,7 @@ test('README and README.en describe the same save location and link to files tha
   assert.ok(!readme.includes('proposals/') && !english.includes('proposals/'));
   for (const target of [
     'docs/CODEX-TODO.md',
-    'docs/CHAT-REPRODUCTION-2026-10-13.md',
+    'docs/records/CHAT-REPRODUCTION-2026-10-13.md',
     'docs/CHAT-SELF-EVALUATION.md',
     '.codex/config.toml'
   ]) {

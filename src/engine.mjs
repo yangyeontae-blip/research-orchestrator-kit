@@ -1,10 +1,10 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { SchemaRegistry } from './schemas.mjs';
 import { verifyArtifactUse } from './use-verification.mjs';
-import { toolkitPath, exists, readJson, slash, replaceFile, unlinkQuiet } from './utils.mjs';
+import { acquireLock, releaseLock } from './lock.mjs';
+import { toolkitPath, exists, readJson, slash, replaceFile } from './utils.mjs';
 
 export const ROLE_FOR_STAGE = Object.freeze({
   study: 'study',
@@ -19,9 +19,6 @@ export const ROLE_FOR_STAGE = Object.freeze({
 const TERMINAL = new Set(['completed', 'partial', 'failed']);
 const RECEIPT_STATUSES = new Set(['completed', 'partial', 'failed']);
 const USE_VERIFICATION_STAGES = new Set(['plan', 'revise', 'video_render']);
-const LOCK_WAIT_MS = 10_000;
-// State transactions take milliseconds; an older lock was left behind by a crashed process.
-const STALE_LOCK_MS = 120_000;
 const DEFAULT_LEASE_MS = 72 * 60 * 60 * 1000;
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const now = () => new Date().toISOString();
@@ -29,15 +26,6 @@ const now = () => new Date().toISOString();
 function required(value, message) {
   if (!value) throw new Error(message);
   return value;
-}
-
-function processAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === 'EPERM';
-  }
 }
 
 const leaseExpired = (task) =>
@@ -1337,7 +1325,7 @@ export class Engine {
 
   async #transaction(fn, options = {}) {
     await fs.mkdir(this.workDir, { recursive: true });
-    const lock = await this.#acquireLock();
+    const lock = await acquireLock(this.lockPath, slash(path.relative(this.root, this.lockPath)));
     try {
       const state = (await exists(this.statePath)) ? await readJson(this.statePath) : null;
       if (!state && !options.allowMissing) throw new Error('Workflow is not initialized');
@@ -1360,52 +1348,7 @@ export class Engine {
       await replaceFile(temp, this.statePath);
       return result;
     } finally {
-      await lock.close();
-      await unlinkQuiet(this.lockPath);
+      await releaseLock(lock, this.lockPath);
     }
-  }
-
-  async #acquireLock() {
-    const deadline = Date.now() + LOCK_WAIT_MS;
-    for (;;) {
-      try {
-        const handle = await fs.open(this.lockPath, 'wx');
-        await handle.writeFile(JSON.stringify({ pid: process.pid, host: os.hostname(), at: now() }));
-        return handle;
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-      }
-      if (await this.#removeStaleLock()) continue;
-      if (Date.now() >= deadline) {
-        throw new Error(
-          `Workflow state is locked by another rok command. If none is running, delete ${slash(path.relative(this.root, this.lockPath))}.`
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-  }
-
-  async #removeStaleLock() {
-    let stat;
-    try {
-      stat = await fs.stat(this.lockPath);
-    } catch (error) {
-      if (error.code === 'ENOENT') return true;
-      throw error;
-    }
-    let owner = null;
-    try {
-      owner = JSON.parse(await fs.readFile(this.lockPath, 'utf8'));
-    } catch {
-      /* the owner may still be writing it */
-    }
-    const deadOwner =
-      owner?.host === os.hostname() &&
-      Number.isInteger(owner.pid) &&
-      owner.pid !== process.pid &&
-      !processAlive(owner.pid);
-    if (!deadOwner && Date.now() - stat.mtimeMs < STALE_LOCK_MS) return false;
-    await unlinkQuiet(this.lockPath);
-    return true;
   }
 }

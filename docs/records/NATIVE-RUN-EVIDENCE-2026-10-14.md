@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Claude Code 실제 모델로 두 차례 전 과정 실행 | `README.md` 검증 절, `README.en.md` 검증 절, `CHANGELOG.md` 0.6.1 | `docs/chat-execution.md`의 단계·수치 서술 | 서술 기록은 있으나 원본 실행 상태·이벤트 로그는 Git 추적 파일에서 확인하지 못함. 전 과정이 독립 재현되었다는 뜻으로 확대하지 않음 |
 | Codex CLI로 계획서 생성 후 확인 관문에서 정지 | `README.md` 검증 절, `README.en.md` 검증 절, `CHANGELOG.md` 0.6.2 | `docs/chat-execution.md`의 129초 재개, 172초 새 프로젝트 서술 | 서술 기록은 있으나 해당 실행의 원본 상태·이벤트 로그는 Git 추적 파일에서 확인하지 못함 |
-| 독립 Codex 채팅 대화의 파일 저장 | `docs/CHAT-REPRODUCTION-2026-10-13.md` | 파일 저장 실패의 오류와 대화 관찰 기록 | 실패로 명확히 기록됨 |
+| 독립 Codex 채팅 대화의 파일 저장 | `docs/records/CHAT-REPRODUCTION-2026-10-13.md` | 파일 저장 실패의 오류와 대화 관찰 기록 | 실패로 명확히 기록됨 |
 
 이번 합성 실행은 실제 연구자 자료를 쓰지 않는다. 입력은 `workspace/codex-native-reproduction/answers.json`의 가상 교사학습공동체 주제이고, `rok new`로 생성한 입력 파일의 SHA-256은 `e7bb11131f4b489d9870ca0282425f1540e08c2b51abdf621b6ee93bb562486b`이다. 사용자의 이번 요청을 실행 범위의 출처로 기록했고, 제공자는 `codex_cli`, 검색어는 없음, 공개 원문 수집은 꺼짐, 워커 호출 상한은 2회, 유료 API 예산은 0원으로 제한했다. 이는 연구자의 수집 승인이나 연구 타당도 확인을 대신하지 않는다.
 

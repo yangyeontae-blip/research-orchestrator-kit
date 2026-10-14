@@ -40,7 +40,7 @@
 - 모델(`gpt-6.1-sol`)과 추론 강도(`high`)는 [`.codex/config.toml`](.codex/config.toml)에 권장값으로 두었습니다. 쓸 수 없는 환경이면 에이전트가 알리고 사용 가능한 모델로 계속합니다.
 - 서로 다른 주제로 실제 돌려 본 기록과 지침을 고친 과정은 [`docs/demos/`](docs/demos/)에 있습니다.
 - 실제 대화 선택을 반영한 [두 주제 초안](examples/chat-proposal/live-two-topics-2026-10-13/README.md), [교육 질적 연구 합성 예시](examples/chat-proposal/education-qualitative/README.md), [보건 양적 연구 합성 예시](examples/chat-proposal/health-quantitative/README.md), [개발 과정과 확인 기준](docs/CHAT-PROPOSAL-DEVELOPMENT.md)
-- **재현 상태:** 별도 새 Codex CLI 대화 두 건에서 질문과 답변 반영 초안은 확인했지만, 시험 호스트의 읽기 전용 정책으로 `.md` 저장은 실패했습니다. [실행 기록](docs/CHAT-REPRODUCTION-2026-10-13.md)과 [연구자 자가평가표](docs/CHAT-SELF-EVALUATION.md)를 공개합니다. 쓰기 가능한 환경에서의 저장 성공 기록은 아직 없으며([Codex 작업 목록](docs/CODEX-TODO.md)), 채팅에 초안이 보인 것만으로 파일 생성 성공이라고 판정하지 않습니다.
+- **재현 상태:** 별도 새 Codex CLI 대화 두 건에서 질문과 답변 반영 초안은 확인했지만, 시험 호스트의 읽기 전용 정책으로 `.md` 저장은 실패했습니다. [실행 기록](docs/records/CHAT-REPRODUCTION-2026-10-13.md)과 [연구자 자가평가표](docs/CHAT-SELF-EVALUATION.md)를 공개합니다. 쓰기 가능한 환경에서의 저장 성공 기록은 아직 없으며([Codex 작업 목록](docs/CODEX-TODO.md)), 채팅에 초안이 보인 것만으로 파일 생성 성공이라고 판정하지 않습니다.
 - 초안 뒤에 문헌 수집·해시 승인·독립 검토까지 원하면 아래의 전체 실행(ROK)을 이어서 쓰면 됩니다. 이 단계는 선택입니다.
 - 저장한 초안을 심화 모드로 이어갈 때는 `rok init --profile <합의한 형식>` 후 `rok import-plan workspace/<주제요약>/proposal-draft.md --sha256 <파일 SHA-256>`을 실행합니다. 가져온 계획서는 기존 `validate`·실사용 확인·수집 승인 관문을 거치며, 가져오기 자체는 승인이 아닙니다. [명령 안내](docs/CLI-REFERENCE.md)
 
@@ -229,7 +229,7 @@ npm run verify
 
 `node:test` 전체 테스트, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), 인용 대조 결함 주입 평가(`npm run eval`), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
 
-기존 [실행 기록](docs/chat-execution.md#검증-수준)은 Claude Code와 실제 Crossref·OpenAlex·공개 원문으로 합성 아이디어의 탐색 수집 → 초안 → 집중 수집 → 독립 검토 → 보완본 → 최종 확정까지 두 차례 진행했다고 보고합니다. 사람의 관문은 합성 운영자 이름으로 기록했다고 명시되어 있습니다. 해당 원본 상태·이벤트 로그는 Git 추적 파일에서 확인하지 못했으므로 [근거 수준](docs/NATIVE-RUN-EVIDENCE-2026-10-14.md)을 따로 적었습니다. 이번에는 Codex CLI를 실제로 다시 실행해 계획서 파일과 SHA-256을 확인했으며, 초안 자동 검사와 사람의 확인이 남은 상태에서 멈췄습니다. KCI는 실제 서버 응답(키 없음·잘못된 키)까지 확인했고, 유효한 인증키로 결과를 받는 것은 연구자 본인의 키가 필요합니다.
+기존 [실행 기록](docs/chat-execution.md#검증-수준)은 Claude Code와 실제 Crossref·OpenAlex·공개 원문으로 합성 아이디어의 탐색 수집 → 초안 → 집중 수집 → 독립 검토 → 보완본 → 최종 확정까지 두 차례 진행했다고 보고합니다. 사람의 관문은 합성 운영자 이름으로 기록했다고 명시되어 있습니다. 해당 원본 상태·이벤트 로그는 Git 추적 파일에서 확인하지 못했으므로 [근거 수준](docs/records/NATIVE-RUN-EVIDENCE-2026-10-14.md)을 따로 적었습니다. 이번에는 Codex CLI를 실제로 다시 실행해 계획서 파일과 SHA-256을 확인했으며, 초안 자동 검사와 사람의 확인이 남은 상태에서 멈췄습니다. KCI는 실제 서버 응답(키 없음·잘못된 키)까지 확인했고, 유효한 인증키로 결과를 받는 것은 연구자 본인의 키가 필요합니다.
 
 ## 🗂️ 저장소 구조
 
