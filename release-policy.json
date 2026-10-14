@@ -36,6 +36,11 @@
       "path": "docs/media/research-orchestrator-kit-v0.6.1.mp4",
       "max_bytes": 52428800,
       "sha256": "e7e4e37ff229043a76e0e1c0f132eda95e7ac5403df74872d777fd615856b42f"
+    },
+    {
+      "path": "docs/media/research-orchestrator-kit-v0.7.mp4",
+      "max_bytes": 52428800,
+      "sha256": "48e4e420ed001ff61923d3d42214b2c23082e3c5f34737f8af7b17e7a5c77083"
     }
   ],
   "note": "This policy keeps personal author identities out of the published history. Repository ownership remains visible on GitHub."

@@ -18,6 +18,7 @@ node_modules/
 Thumbs.db
 *.mp4
 !docs/video/v0.6/remotion/public/blueprint-clip.mp4
+!docs/media/research-orchestrator-kit-v0.7.mp4
 
 # Local video render logs
 docs/video-*-render*.log

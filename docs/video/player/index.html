@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Research Orchestrator Kit · 소개 영상</title>
-<meta name="description" content="연구 아이디어에서 계획서, 문헌 근거, 보완본까지 모든 단계를 하나의 해시로 묶는 로컬 우선 연구 오케스트레이터">
-<meta property="og:title" content="Research Orchestrator Kit">
-<meta property="og:image" content="../../media/research-orchestrator-kit-v0.6-poster.jpg">
+<meta name="description" content="이 저장소의 AGENTS.md가 주제에 매이지 않는 연구계획서 에이전트입니다. Codex에서 부르면 연구자와 논의한 뒤 계획서 초안을 씁니다.">
+<meta property="og:title" content="Research Orchestrator Kit 0.7">
+<meta property="og:image" content="../../media/research-orchestrator-kit-v0.7-poster.jpg">
 <style>
   :root { color-scheme: dark; --bg: #05070E; --ink: #F4F7FF; --muted: #8A97B8; --line: #1C2640; --cyan: #5EEAD4; }
   * { box-sizing: border-box; }
@@ -15,7 +15,10 @@
   .eyebrow { font: 600 13px/1 ui-monospace, Consolas, monospace; letter-spacing: .2em; color: var(--cyan); }
   h1 { margin: 10px 0 6px; font-size: clamp(28px, 4vw, 44px); letter-spacing: -0.02em; }
   p { margin: 0; color: var(--muted); }
-  video { display: block; width: 100%; margin: 24px 0 16px; border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 30px 80px #000c; background: #000; }
+  .stage { position: relative; margin: 24px 0 16px; }
+  video { display: block; width: 100%; border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 30px 80px #000c; background: #000; }
+  .sound { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); padding: 12px 22px; border-radius: 999px; border: 1px solid var(--cyan); background: #05070Ecc; color: var(--cyan); font: 700 16px/1 system-ui, "Malgun Gothic", sans-serif; cursor: pointer; }
+  .sound[hidden] { display: none; }
   nav { display: flex; flex-wrap: wrap; gap: 10px; }
   a { color: var(--ink); text-decoration: none; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; }
   a:hover { border-color: var(--cyan); color: var(--cyan); }
@@ -24,16 +27,30 @@
 <body>
 <main>
   <div class="eyebrow">연구자는 판단하고 · 에이전트는 실행한다</div>
-  <h1>Research Orchestrator Kit</h1>
-  <p>승인된 범위 안에서 Codex·Claude가 수집·작성·검토를 실행하고, 판단이 필요한 순간에만 연구자에게 묻습니다. 114초 · 한국어 나레이션·자막 · 합성 예시</p>
-  <video controls playsinline preload="metadata" poster="../../media/research-orchestrator-kit-v0.6-poster.jpg">
-    <source src="https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4" type="video/mp4">
-  </video>
+  <h1>Research Orchestrator Kit 0.7</h1>
+  <p>Codex에서 AGENTS.md를 부르면 질문 → 방향 토론 → 동의 → 계획서 초안. 122초 · 한국어 나레이션·자막 · 가상 사례</p>
+  <div class="stage">
+    <video id="video" controls autoplay muted playsinline preload="auto" poster="../../media/research-orchestrator-kit-v0.7-poster.jpg">
+      <source src="../../media/research-orchestrator-kit-v0.7.mp4" type="video/mp4">
+    </video>
+    <button class="sound" id="sound" type="button">🔊 소리 켜기</button>
+  </div>
   <nav>
     <a href="https://github.com/yangyeontae-blip/research-orchestrator-kit">GitHub 저장소</a>
-    <a href="https://github.com/yangyeontae-blip/research-orchestrator-kit/tree/main/docs/video/v0.6">영상 소스 · 대본 · 자막</a>
-    <a href="https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4">MP4 내려받기</a>
+    <a href="https://github.com/yangyeontae-blip/research-orchestrator-kit/tree/main/docs/video/v0.7">영상 소스 · 대본 · 자막</a>
+    <a href="../../media/research-orchestrator-kit-v0.7.mp4" download>MP4 내려받기</a>
+    <a href="https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4">이전 영상 (v0.6)</a>
   </nav>
 </main>
+<script>
+  // Browsers only autoplay muted video; one click turns sound on and restarts from the beginning.
+  const video = document.getElementById('video');
+  const sound = document.getElementById('sound');
+  const sync = () => { sound.hidden = !video.muted; };
+  sound.addEventListener('click', () => { video.muted = false; video.currentTime = 0; video.play(); sync(); });
+  video.addEventListener('volumechange', sync);
+  video.play().catch(() => {});
+  sync();
+</script>
 </body>
 </html>

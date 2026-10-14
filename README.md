@@ -48,15 +48,15 @@
 
 ## 🎬 소개 영상
 
-https://github.com/user-attachments/assets/9dff1b4b-2aa1-4adc-8f84-1e53e637f918
-
 <div align="center">
 
-114초 · 한국어 나레이션·자막 · 합성 예시 · [큰 화면 플레이어](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [원본 MP4](https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4)
+<a href="https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/"><img src="docs/media/research-orchestrator-kit-v0.7-play.jpg" alt="소개 영상 재생 (122초)" width="860"></a>
+
+**▶ 이미지를 누르면 브라우저에서 바로 재생됩니다** · 122초 · 한국어 나레이션·자막 · 가상 사례 · [MP4 파일](docs/media/research-orchestrator-kit-v0.7.mp4)
 
 </div>
 
-7번째 장면은 이 저장소의 블루프린트 렌더러가 합성 계획서로 실제로 만든 화면입니다. 나머지는 코드로 만든 모션 그래픽이고, 나레이션은 TTS, 음악과 효과음은 코드로 합성했습니다. 소스와 대본은 [`docs/video/v0.6/`](docs/video/v0.6/)에 있습니다.
+Codex에서 `AGENTS.md`를 부르면 질문 → 방향 토론 → 동의 → 계획서 초안으로 이어지는 과정을, 공개된 두 가상 사례의 실제 저장 기록(파일 경로·크기·해시·글자 수)과 함께 보여 줍니다. 대화 화면은 그 기록을 바탕으로 재구성했고, 화면마다 무엇이 실제 값이고 무엇이 재구성인지 표시했습니다. 모션 그래픽은 코드로 만들었고, 나레이션은 TTS, 음악과 효과음은 코드로 합성했습니다. 소스와 대본은 [`docs/video/v0.7/`](docs/video/v0.7/)에 있습니다. 이전 영상(v0.6, CLI 실행 중심)은 [여기](https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4)에 있습니다.
 
 ## 🧠 에이전트 설계 한눈에
 

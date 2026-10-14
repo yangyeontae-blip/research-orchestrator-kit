@@ -50,15 +50,15 @@ Following this repository's AGENTS.md, discuss my research idea with me, then dr
 
 ## Intro video
 
-https://github.com/user-attachments/assets/9dff1b4b-2aa1-4adc-8f84-1e53e637f918
-
 <div align="center">
 
-114 seconds · Korean narration and captions · synthetic example · [large-screen player](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [original MP4](https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4)
+<a href="https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/"><img src="docs/media/research-orchestrator-kit-v0.7-play.jpg" alt="Play the intro video (122 seconds)" width="860"></a>
+
+**▶ Click the image to play it in your browser** · 122 seconds · Korean narration and captions · fictional cases · [MP4 file](docs/media/research-orchestrator-kit-v0.7.mp4)
 
 </div>
 
-Scene 7 was produced for real by this repository's blueprint renderer from a synthetic plan. The rest is code-made motion graphics; the narration is text-to-speech, and the music and sound effects are synthesized in code. Source and script are in [`docs/video/v0.6/`](docs/video/v0.6/).
+The video shows how calling `AGENTS.md` in Codex leads from questions to a direction discussion, explicit agreement, and a proposal draft, alongside the real save records (file paths, sizes, hashes, character counts) of the two public fictional cases. The chat screens are reconstructed from those records, and each screen marks which values are real and which parts are reconstructed. Motion graphics are code-made; narration is text-to-speech, and music and sound effects are synthesized in code. Source and script are in [`docs/video/v0.7/`](docs/video/v0.7/). The previous video (v0.6, CLI-focused) is [here](https://github.com/yangyeontae-blip/research-orchestrator-kit/releases/download/v0.6.1/research-orchestrator-kit-v0.6.1.mp4).
 
 ## Agent design at a glance
 
