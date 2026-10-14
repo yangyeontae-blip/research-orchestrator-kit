@@ -8,9 +8,15 @@ import { codexDispatch } from '../src/adapters/codex.mjs';
 import { claudeDispatch } from '../src/adapters/claude.mjs';
 
 const task = {
-  id: 'task-example', workflow_id: 'workflow-example', role: 'research', stage: 'plan', cycle: 1,
+  id: 'task-example',
+  workflow_id: 'workflow-example',
+  role: 'research',
+  stage: 'plan',
+  cycle: 1,
   token: 'demo',
-  inputs: [{ path: 'workspace/input.md', sha256: 'a'.repeat(64) }], plan: null, context: 'Synthetic task'
+  inputs: [{ path: 'workspace/input.md', sha256: 'a'.repeat(64) }],
+  plan: null,
+  context: 'Synthetic task'
 };
 
 test('Codex adapter returns a target and a self-contained message', () => {
@@ -19,10 +25,18 @@ test('Codex adapter returns a target and a self-contained message', () => {
   assert.match(result.message, /task-example/);
   assert.match(result.message, /receipt JSON/);
   assert.match(result.message, /Task token: demo/);
-  for (const label of ['Goal:', 'User decisions:', 'Input versions:', 'Unresolved:', 'Next action:', 'Completion conditions:']) assert.match(result.message, new RegExp(label));
+  for (const label of [
+    'Goal:',
+    'User decisions:',
+    'Input versions:',
+    'Unresolved:',
+    'Next action:',
+    'Completion conditions:'
+  ])
+    assert.match(result.message, new RegExp(label));
 });
 
-test('Claude adapter writes a portable request file inside the project', async t => {
+test('Claude adapter writes a portable request file inside the project', async (t) => {
   const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const testBase = path.join(os.tmpdir(), 'research-orchestrator-kit-tests');
   await fs.mkdir(testBase, { recursive: true });

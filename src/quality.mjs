@@ -16,17 +16,23 @@ function section(text, pattern) {
 
 export function citationPairs(text) {
   // Accepts "## 참고 문헌", "## 5. References", "## Bibliography" and similar reference headings.
-  const [body, references = ''] = text.split(/\n#{1,3}\s*(?:[\dⅠ-Ⅻ]+[.)]?\s*)?(?:참고\s*문헌|references|bibliography|works cited)(?:\s*\([^)\n]*\))?\s*\n/i);
+  const [body, references = ''] = text.split(
+    /\n#{1,3}\s*(?:[\dⅠ-Ⅻ]+[.)]?\s*)?(?:참고\s*문헌|references|bibliography|works cited)(?:\s*\([^)\n]*\))?\s*\n/i
+  );
   const citations = new Set();
   // Parenthetical citations, including "(Jiao & Wang, 2026)" and "(Kim, 2021; Lee et al., 2020)".
   for (const group of body.matchAll(/\(([^()]*\d{4}[a-z]?[^()]*)\)/gu)) {
     for (const part of group[1].split(';')) {
-      const match = part.match(/^\s*([\p{L}][\p{L}\p{M}'’.-]+)(?:\s*(?:&|and|와|과)\s*[\p{L}][\p{L}\p{M}'’.-]+|\s+(?:외|et al\.))?\s*,?\s*(\d{4}[a-z]?)\s*$/u);
+      const match = part.match(
+        /^\s*([\p{L}][\p{L}\p{M}'’.-]+)(?:\s*(?:&|and|와|과)\s*[\p{L}][\p{L}\p{M}'’.-]+|\s+(?:외|et al\.))?\s*,?\s*(\d{4}[a-z]?)\s*$/u
+      );
       if (match) citations.add(`${match[1].toLowerCase()}|${match[2]}`);
     }
   }
   // Narrative citations: "Jiao & Wang (2026)", "Nair et al. (2024)", "김철수(2021)".
-  for (const match of body.matchAll(/(?<![\p{L}])(\p{Lu}[\p{L}\p{M}'’.-]+|[가-힣]{2,4})(?:\s+(?:et al\.|외)|\s*(?:&|and|와|과)\s*[\p{Lu}가-힣][\p{L}\p{M}'’.-]*)?\s*\((\d{4}[a-z]?)\)/gu)) {
+  for (const match of body.matchAll(
+    /(?<![\p{L}])(\p{Lu}[\p{L}\p{M}'’.-]+|[가-힣]{2,4})(?:\s+(?:et al\.|외)|\s*(?:&|and|와|과)\s*[\p{Lu}가-힣][\p{L}\p{M}'’.-]*)?\s*\((\d{4}[a-z]?)\)/gu
+  )) {
     citations.add(`${match[1].toLowerCase()}|${match[2]}`);
   }
   const refs = new Set();
@@ -35,9 +41,10 @@ export function citationPairs(text) {
     if (match) refs.add(`${match[1].toLowerCase()}|${match[2]}`);
   }
   return {
-    citations: [...citations], references: [...refs],
-    missingReferences: [...citations].filter(key => !refs.has(key)),
-    uncitedReferences: [...refs].filter(key => !citations.has(key))
+    citations: [...citations],
+    references: [...refs],
+    missingReferences: [...citations].filter((key) => !refs.has(key)),
+    uncitedReferences: [...refs].filter((key) => !citations.has(key))
   };
 }
 
@@ -55,9 +62,9 @@ export async function generateQualityReport(root, projectDir, planPath, options 
   const planSha = await sha256File(plan);
   const brief = await readJson(path.join(project, 'research-brief.json'));
   const ledgerPath = path.join(project, 'claim-ledger.json');
-  const ledger = await exists(ledgerPath) ? await readJson(ledgerPath) : { claims: [] };
+  const ledger = (await exists(ledgerPath)) ? await readJson(ledgerPath) : { claims: [] };
   const literaturePath = path.join(project, 'literature-manifest.json');
-  const literature = await exists(literaturePath) ? await readJson(literaturePath) : { items: [] };
+  const literature = (await exists(literaturePath)) ? await readJson(literaturePath) : { items: [] };
   const designPath = path.join(project, 'research-design.json');
   let design = null;
   let designError = '연구문제별 자료·분석 대응표 없음';
@@ -65,51 +72,115 @@ export async function generateQualityReport(root, projectDir, planPath, options 
     try {
       design = await readJson(designPath);
       await new SchemaRegistry(root).assert('research-design', design);
-      if (design.project_id !== brief.project_id || design.plan_sha256 !== planSha) throw new Error('프로젝트 또는 계획서 해시 불일치');
-      const normalized = value => String(value).replace(/\s+/g, ' ').trim();
+      if (design.project_id !== brief.project_id || design.plan_sha256 !== planSha)
+        throw new Error('프로젝트 또는 계획서 해시 불일치');
+      const normalized = (value) => String(value).replace(/\s+/g, ' ').trim();
       const planText = normalized(text);
-      if (!design.links.every(link => [link.question, link.data_source, link.analysis].every(value => planText.includes(normalized(value))))) {
+      if (
+        !design.links.every((link) =>
+          [link.question, link.data_source, link.analysis].every((value) => planText.includes(normalized(value)))
+        )
+      ) {
         throw new Error('대응표의 질문·자료·분석 문구를 계획서에서 찾지 못함');
       }
       designError = '';
-    } catch (error) { design = null; designError = error.message; }
+    } catch (error) {
+      design = null;
+      designError = error.message;
+    }
   }
   const pairs = citationPairs(text);
-  const literatureById = new Map(literature.items.map(item => [item.id, item]));
-  const claimsMarked = ledger.plan_sha256 === planSha && ledger.claims.length > 0 && ledger.claims.every(item =>
-    evidenceLabels[item.verification_status] && item.verification_status !== 'unverified'
-    && item.plan_location?.trim() && text.includes(item.plan_location.trim())
-    && item.literature_ids.length > 0 && item.evidence_locations.length > 0
-    && item.literature_ids.every(id => {
-      const source = literatureById.get(id);
-      if (source?.decision !== 'selected') return false;
-      return item.verification_status === 'metadata_only'
-        || ['pdf_ingested', 'hwp_ingested', 'hwpx_ingested'].includes(source.verification);
-    })
-  );
-  const metadataOnlyCount = ledger.claims.filter(item => item.verification_status === 'metadata_only').length;
+  const literatureById = new Map(literature.items.map((item) => [item.id, item]));
+  const claimsMarked =
+    ledger.plan_sha256 === planSha &&
+    ledger.claims.length > 0 &&
+    ledger.claims.every(
+      (item) =>
+        evidenceLabels[item.verification_status] &&
+        item.verification_status !== 'unverified' &&
+        item.plan_location?.trim() &&
+        text.includes(item.plan_location.trim()) &&
+        item.literature_ids.length > 0 &&
+        item.evidence_locations.length > 0 &&
+        item.literature_ids.every((id) => {
+          const source = literatureById.get(id);
+          if (source?.decision !== 'selected') return false;
+          return (
+            item.verification_status === 'metadata_only' ||
+            ['pdf_ingested', 'hwp_ingested', 'hwpx_ingested'].includes(source.verification)
+          );
+        })
+    );
+  const metadataOnlyCount = ledger.claims.filter((item) => item.verification_status === 'metadata_only').length;
   const questions = section(text, /연구\s*문제|연구\s*질문|research questions?/i);
-  const data = section(text, /자료\s*수집|자료\s*원|연구\s*자료|참여자|participants?|data sources?|data and materials|sampling/i);
+  const data = section(
+    text,
+    /자료\s*수집|자료\s*원|연구\s*자료|참여자|participants?|data sources?|data and materials|sampling/i
+  );
   const analysis = section(text, /자료\s*분석|분석\s*방법|analysis/i);
   const ethics = section(text, /연구\s*윤리|익명|동의|irb|ethic/i);
   const feasibility = Boolean(brief.deadline) && section(text, /일정|timeline|추진/i);
   const references = /참고\s*문헌|references|bibliography/i.test(text);
-  const profileFormat = brief.profile === 'apa7'
-    ? (brief.apa_paper_type !== 'not_applicable' && /참고\s*문헌|references|bibliography/i.test(text))
-    : brief.profile === 'jqi'
-      ? (/국문\s*요약|초록/i.test(text) && /abstract/i.test(text) && /주제어|keywords/i.test(text))
-      : true;
+  const profileFormat =
+    brief.profile === 'apa7'
+      ? brief.apa_paper_type !== 'not_applicable' && /참고\s*문헌|references|bibliography/i.test(text)
+      : brief.profile === 'jqi'
+        ? /국문\s*요약|초록/i.test(text) && /abstract/i.test(text) && /주제어|keywords/i.test(text)
+        : true;
   const checks = [
-    check('question_scope', '연구질문·대상·범위', questions, questions ? '연구질문 표지를 찾음' : '연구질문 표지를 찾지 못함'),
-    check('method_alignment', '연구질문별 자료·분석 대응 기록', questions && data && analysis && Boolean(design), design ? `${design.links.length}개 질문 대응표·계획서 해시·본문 문구 일치 (의미상 정합성은 사람 검토 필요)` : designError),
-    check('evidence_status', '핵심 주장 출처 연결·버전', claimsMarked, claimsMarked ? `${ledger.claims.length}개 주장 연결, 메타데이터만 확인 ${metadataOnlyCount}개; 원문 타당성은 별도 검토` : '근거 장부의 계획서 해시, 주장 위치, 선정 문헌 ID 또는 확인 위치가 누락·불일치'),
-    check('citation_reference', '본문 인용–참고문헌 대응', references && pairs.citations.length > 0 && pairs.references.length > 0 && pairs.missingReferences.length === 0 && pairs.uncitedReferences.length === 0, `본문 인용=${pairs.citations.length}, 참고문헌=${pairs.references.length}, 누락=${pairs.missingReferences.length}, 미인용=${pairs.uncitedReferences.length}`),
+    check(
+      'question_scope',
+      '연구질문·대상·범위',
+      questions,
+      questions ? '연구질문 표지를 찾음' : '연구질문 표지를 찾지 못함'
+    ),
+    check(
+      'method_alignment',
+      '연구질문별 자료·분석 대응 기록',
+      questions && data && analysis && Boolean(design),
+      design
+        ? `${design.links.length}개 질문 대응표·계획서 해시·본문 문구 일치 (의미상 정합성은 사람 검토 필요)`
+        : designError
+    ),
+    check(
+      'evidence_status',
+      '핵심 주장 출처 연결·버전',
+      claimsMarked,
+      claimsMarked
+        ? `${ledger.claims.length}개 주장 연결, 메타데이터만 확인 ${metadataOnlyCount}개; 원문 타당성은 별도 검토`
+        : '근거 장부의 계획서 해시, 주장 위치, 선정 문헌 ID 또는 확인 위치가 누락·불일치'
+    ),
+    check(
+      'citation_reference',
+      '본문 인용–참고문헌 대응',
+      references &&
+        pairs.citations.length > 0 &&
+        pairs.references.length > 0 &&
+        pairs.missingReferences.length === 0 &&
+        pairs.uncitedReferences.length === 0,
+      `본문 인용=${pairs.citations.length}, 참고문헌=${pairs.references.length}, 누락=${pairs.missingReferences.length}, 미인용=${pairs.uncitedReferences.length}`
+    ),
     check('feasibility', '실행 가능성·일정', feasibility, brief.deadline ? `마감일 ${brief.deadline}` : '마감일 미정'),
-    check('ethics', '연구윤리·민감정보', ethics || !brief.sensitive_information, ethics ? '윤리 표지를 찾음' : '민감정보 없음으로 응답됨'),
-    check('profile_format', `${brief.profile} 형식 필수 요소`, profileFormat, profileFormat ? '자동 형식 표지 통과' : '필수 형식 표지 누락'),
-    check('literature_decisions', '문헌 선정·제외 이유', literature.items.length === 0 || literature.items.every(item => item.reason?.trim()), `${literature.items.length}개 문헌 점검`)
+    check(
+      'ethics',
+      '연구윤리·민감정보',
+      ethics || !brief.sensitive_information,
+      ethics ? '윤리 표지를 찾음' : '민감정보 없음으로 응답됨'
+    ),
+    check(
+      'profile_format',
+      `${brief.profile} 형식 필수 요소`,
+      profileFormat,
+      profileFormat ? '자동 형식 표지 통과' : '필수 형식 표지 누락'
+    ),
+    check(
+      'literature_decisions',
+      '문헌 선정·제외 이유',
+      literature.items.length === 0 || literature.items.every((item) => item.reason?.trim()),
+      `${literature.items.length}개 문헌 점검`
+    )
   ];
-  const score = Number((10 * checks.filter(item => item.passed).length / checks.length).toFixed(1));
+  const score = Number(((10 * checks.filter((item) => item.passed).length) / checks.length).toFixed(1));
   const report = {
     schema_version: 1,
     project_id: brief.project_id,
@@ -117,8 +188,8 @@ export async function generateQualityReport(root, projectDir, planPath, options 
     plan: { path: slash(path.relative(root, plan)), sha256: planSha },
     automated: {
       score,
-      hard_checks_passed: checks.every(item => item.passed),
-      draft_checks_passed: checks.filter(item => DRAFT_CHECKS.has(item.id)).every(item => item.passed),
+      hard_checks_passed: checks.every((item) => item.passed),
+      draft_checks_passed: checks.filter((item) => DRAFT_CHECKS.has(item.id)).every((item) => item.passed),
       checks,
       limitations: [
         '자동 검사는 대응표 문구·출처 연결·인용의 기계적 일치만 확인하며 연구의 학술적 타당성을 판정하지 않는다.',
@@ -136,7 +207,8 @@ export async function generateQualityReport(root, projectDir, planPath, options 
   const mdPath = path.join(project, 'quality-report.md');
   await writeJson(jsonPath, report);
   const markdown = [
-    '# 계획서 품질 보고서', '',
+    '# 계획서 품질 보고서',
+    '',
     `- 계획서: ${report.plan.path}`,
     `- SHA-256: ${report.plan.sha256}`,
     `- 프로필: ${report.profile}`,
@@ -145,10 +217,15 @@ export async function generateQualityReport(root, projectDir, planPath, options 
     `- 초안 기준 검사(근거·인용·대응표 제외, 첫 계획서에 적용): ${report.automated.draft_checks_passed ? '통과' : '미통과'}`,
     `- AI 평가: ${report.ai_assessment ? '기록됨' : '미실시'}`,
     `- 사람 평가: ${report.human_assessment ? '기록됨' : '미실시'}`,
-    '', '## 자동 검사', '',
-    ...checks.map(item => `- [${item.passed ? 'x' : ' '}] ${item.label}: ${item.evidence}`),
-    '', '## 자동 검사의 한계', '',
-    ...report.automated.limitations.map(item => `- ${item}`), ''
+    '',
+    '## 자동 검사',
+    '',
+    ...checks.map((item) => `- [${item.passed ? 'x' : ' '}] ${item.label}: ${item.evidence}`),
+    '',
+    '## 자동 검사의 한계',
+    '',
+    ...report.automated.limitations.map((item) => `- ${item}`),
+    ''
   ].join('\n');
   await fs.writeFile(mdPath, markdown, 'utf8');
   return { report, json_path: slash(path.relative(root, jsonPath)), md_path: slash(path.relative(root, mdPath)) };
@@ -167,8 +244,11 @@ export async function validateStandardArtifacts(root, projectDir, options = {}) 
   const results = [];
   for (const [schema, file] of targets) {
     const target = path.join(project, file);
-    if (!await exists(target)) {
-      results.push({ file, status: ['quality-report', 'document-manifest'].includes(schema) ? 'optional_missing' : 'missing' });
+    if (!(await exists(target))) {
+      results.push({
+        file,
+        status: ['quality-report', 'document-manifest'].includes(schema) ? 'optional_missing' : 'missing'
+      });
       continue;
     }
     try {
@@ -177,7 +257,8 @@ export async function validateStandardArtifacts(root, projectDir, options = {}) 
       if (schema === 'document-manifest') {
         const md = path.resolve(root, value.markdown.path);
         const docx = path.resolve(root, value.docx.path);
-        if (await sha256File(md) !== value.markdown.sha256 || await sha256File(docx) !== value.docx.sha256) throw new Error('document manifest hash mismatch');
+        if ((await sha256File(md)) !== value.markdown.sha256 || (await sha256File(docx)) !== value.docx.sha256)
+          throw new Error('document manifest hash mismatch');
       }
       results.push({ file, status: 'valid' });
     } catch (error) {
@@ -185,5 +266,5 @@ export async function validateStandardArtifacts(root, projectDir, options = {}) 
     }
   }
   if (options.plan) await generateQualityReport(root, projectDir, options.plan);
-  return { ok: results.every(item => !['missing', 'invalid'].includes(item.status)), results };
+  return { ok: results.every((item) => !['missing', 'invalid'].includes(item.status)), results };
 }

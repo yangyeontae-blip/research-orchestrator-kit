@@ -2,136 +2,491 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import {toolkitFixture} from './helpers.mjs';
-import {Engine} from '../src/engine.mjs';
-import {authorizeRun,runWorkflow} from '../src/execution.mjs';
-import {createBlueprint,renderBlueprint,previewVideo} from '../src/blueprint.mjs';
-import {verifyEvidence} from '../src/evidence.mjs';
-import {publicIPv4} from '../src/acquisition.mjs';
-import {searchLiterature} from '../src/literature.mjs';
-const confirmation={text:'Approve synthetic run only',source:'synthetic-test'};
-async function setup(t){const root=await toolkitFixture(t);await fs.writeFile(path.join(root,'input.md'),'Synthetic nonpersonal idea');const engine=new Engine(root);const status=await engine.init({profile:'generic'});const task=await engine.enqueue({schema_version:1,request_id:'example',stage:'study',inputs:[{path:'input.md'}]});await authorizeRun(root,{workflow_id:status.workflow_id,provider:'claude_cli',inputs:[{path:'input.md'}],queries:[]},confirmation);return {root,engine,task};}
-test('runner invokes worker and preserves completed work on resume',async t=>{
- const {root,engine}=await setup(t);let calls=0;const worker=async(file,args,options)=>{assert.equal(JSON.parse(options.input).inputs[0].source.path,'input.md');calls++;return JSON.stringify({structured_output:{status:'completed',handoff_state:'hold',reason:'Synthetic study only',files:[{name:'study.md',kind:'study_record',content:'Synthetic study; no human learning claimed.'}]}});};
- await runWorkflow(root,{worker});assert.equal((await engine.status()).tasks[0].status,'completed');await runWorkflow(root,{worker,resume:true});assert.equal(calls,1);
+import { toolkitFixture } from './helpers.mjs';
+import { Engine } from '../src/engine.mjs';
+import { authorizeRun, runWorkflow } from '../src/execution.mjs';
+import { createBlueprint, renderBlueprint, previewVideo } from '../src/blueprint.mjs';
+import { verifyEvidence } from '../src/evidence.mjs';
+import { publicIPv4 } from '../src/acquisition.mjs';
+import { searchLiterature } from '../src/literature.mjs';
+const confirmation = { text: 'Approve synthetic run only', source: 'synthetic-test' };
+async function setup(t) {
+  const root = await toolkitFixture(t);
+  await fs.writeFile(path.join(root, 'input.md'), 'Synthetic nonpersonal idea');
+  const engine = new Engine(root);
+  const status = await engine.init({ profile: 'generic' });
+  const task = await engine.enqueue({
+    schema_version: 1,
+    request_id: 'example',
+    stage: 'study',
+    inputs: [{ path: 'input.md' }]
+  });
+  await authorizeRun(
+    root,
+    { workflow_id: status.workflow_id, provider: 'claude_cli', inputs: [{ path: 'input.md' }], queries: [] },
+    confirmation
+  );
+  return { root, engine, task };
+}
+test('runner invokes worker and preserves completed work on resume', async (t) => {
+  const { root, engine } = await setup(t);
+  let calls = 0;
+  const worker = async (file, args, options) => {
+    assert.equal(JSON.parse(options.input).inputs[0].source.path, 'input.md');
+    calls++;
+    return JSON.stringify({
+      structured_output: {
+        status: 'completed',
+        handoff_state: 'hold',
+        reason: 'Synthetic study only',
+        files: [{ name: 'study.md', kind: 'study_record', content: 'Synthetic study; no human learning claimed.' }]
+      }
+    });
+  };
+  await runWorkflow(root, { worker });
+  assert.equal((await engine.status()).tasks[0].status, 'completed');
+  await runWorkflow(root, { worker, resume: true });
+  assert.equal(calls, 1);
 });
-test('changed approved input and active lock block execution',async t=>{
- const {root}=await setup(t);await fs.writeFile(path.join(root,'input.md'),'changed');await assert.rejects(runWorkflow(root,{worker:()=>assert.fail()}),/hash mismatch/);
- await fs.writeFile(path.join(root,'.research-work/runner.lock'),'{}');await assert.rejects(runWorkflow(root),/already active/);
+test('changed approved input and active lock block execution', async (t) => {
+  const { root } = await setup(t);
+  await fs.writeFile(path.join(root, 'input.md'), 'changed');
+  await assert.rejects(runWorkflow(root, { worker: () => assert.fail() }), /hash mismatch/);
+  await fs.writeFile(path.join(root, '.research-work/runner.lock'), '{}');
+  await assert.rejects(runWorkflow(root), /already active/);
 });
-test('worker failure resumes only failed stage',async t=>{
- const {root,engine}=await setup(t);await assert.rejects(runWorkflow(root,{worker:async()=>{throw new Error('quota');}}),/usage limit/);assert.equal((await engine.status()).tasks[0].status,'partial');
- await runWorkflow(root,{resume:true,worker:async()=>JSON.stringify({structured_output:{status:'completed',handoff_state:'hold',reason:'done',files:[{name:'study.md',kind:'study_record',content:'Synthetic record'}]}})});assert.equal((await engine.status()).tasks[0].status,'completed');
+test('worker failure resumes only failed stage', async (t) => {
+  const { root, engine } = await setup(t);
+  await assert.rejects(
+    runWorkflow(root, {
+      worker: async () => {
+        throw new Error('quota');
+      }
+    }),
+    /usage limit/
+  );
+  assert.equal((await engine.status()).tasks[0].status, 'partial');
+  await runWorkflow(root, {
+    resume: true,
+    worker: async () =>
+      JSON.stringify({
+        structured_output: {
+          status: 'completed',
+          handoff_state: 'hold',
+          reason: 'done',
+          files: [{ name: 'study.md', kind: 'study_record', content: 'Synthetic record' }]
+        }
+      })
+  });
+  assert.equal((await engine.status()).tasks[0].status, 'completed');
 });
-test('worker traversal cannot become completed artifacts',async t=>{
- const {root,engine}=await setup(t);await assert.rejects(runWorkflow(root,{worker:async()=>JSON.stringify({structured_output:{status:'completed',handoff_state:'hold',reason:'x',files:[{name:'../outside.md',kind:'study_record',content:'x'}]}})}),/Unsafe/);assert.equal((await engine.status()).tasks[0].status,'partial');
+test('worker traversal cannot become completed artifacts', async (t) => {
+  const { root, engine } = await setup(t);
+  await assert.rejects(
+    runWorkflow(root, {
+      worker: async () =>
+        JSON.stringify({
+          structured_output: {
+            status: 'completed',
+            handoff_state: 'hold',
+            reason: 'x',
+            files: [{ name: '../outside.md', kind: 'study_record', content: 'x' }]
+          }
+        })
+    }),
+    /Unsafe/
+  );
+  assert.equal((await engine.status()).tasks[0].status, 'partial');
 });
-test('blueprint source lines and render approval track plan changes',async t=>{
- const root=await toolkitFixture(t);await fs.writeFile(path.join(root,'plan.md'),'# Synthetic\n\n## 연구문제\nHow?\n\n## 자료\nSynthetic diaries\n');const first=await createBlueprint(root,'plan.md');const bp=JSON.parse(await fs.readFile(path.join(root,first.blueprint.path)));assert.equal(bp.sections.find(s=>s.id==='questions').source.start_line,4);assert.ok(first.missing.includes('analysis'));
- await fs.appendFile(path.join(root,'plan.md'),'\n## 분석\nCompare\n');await assert.rejects(renderBlueprint(root,first.blueprint,{confirmation:{...confirmation,blueprint_sha256:first.blueprint.sha256}}),/hash mismatch/);const second=await createBlueprint(root,'plan.md',{previous:first.blueprint.path});assert.ok(JSON.parse(await fs.readFile(path.join(root,second.blueprint.path))).changes.some(c=>c.id==='analysis'&&c.changed));
+test('blueprint source lines and render approval track plan changes', async (t) => {
+  const root = await toolkitFixture(t);
+  await fs.writeFile(path.join(root, 'plan.md'), '# Synthetic\n\n## 연구문제\nHow?\n\n## 자료\nSynthetic diaries\n');
+  const first = await createBlueprint(root, 'plan.md');
+  const bp = JSON.parse(await fs.readFile(path.join(root, first.blueprint.path)));
+  assert.equal(bp.sections.find((s) => s.id === 'questions').source.start_line, 4);
+  assert.ok(first.missing.includes('analysis'));
+  await fs.appendFile(path.join(root, 'plan.md'), '\n## 분석\nCompare\n');
+  await assert.rejects(
+    renderBlueprint(root, first.blueprint, {
+      confirmation: { ...confirmation, blueprint_sha256: first.blueprint.sha256 }
+    }),
+    /hash mismatch/
+  );
+  const second = await createBlueprint(root, 'plan.md', { previous: first.blueprint.path });
+  assert.ok(
+    JSON.parse(await fs.readFile(path.join(root, second.blueprint.path))).changes.some(
+      (c) => c.id === 'analysis' && c.changed
+    )
+  );
 });
-test('evidence checks quotes without claiming human verification',async t=>{
- const root=await toolkitFixture(t),engine=new Engine(root);await fs.writeFile(path.join(root,'plan.md'),'This is an exact synthetic claim.');await fs.writeFile(path.join(root,'source.txt'),'source');const source=await engine.artifact('source.txt');await fs.writeFile(path.join(root,'pages.json'),JSON.stringify({sha256:source.sha256,pages:[{pdf_page:1,printed_page:null,text:'supporting passage'}]}));const plan=await engine.artifact('plan.md');const result=await verifyEvidence(root,plan,{plan_sha256:plan.sha256,claims:[{id:'c1',claim:'This is an exact synthetic claim.',locations:[{document:source,parsed:await engine.artifact('pages.json'),pdf_page:1,quote:'fabricated passage',relation:'support'}]}]});assert.equal(result.findings[0].location_check,'failed');assert.equal(result.human_verified,false);
+test('evidence checks quotes without claiming human verification', async (t) => {
+  const root = await toolkitFixture(t),
+    engine = new Engine(root);
+  await fs.writeFile(path.join(root, 'plan.md'), 'This is an exact synthetic claim.');
+  await fs.writeFile(path.join(root, 'source.txt'), 'source');
+  const source = await engine.artifact('source.txt');
+  await fs.writeFile(
+    path.join(root, 'pages.json'),
+    JSON.stringify({ sha256: source.sha256, pages: [{ pdf_page: 1, printed_page: null, text: 'supporting passage' }] })
+  );
+  const plan = await engine.artifact('plan.md');
+  const result = await verifyEvidence(root, plan, {
+    plan_sha256: plan.sha256,
+    claims: [
+      {
+        id: 'c1',
+        claim: 'This is an exact synthetic claim.',
+        locations: [
+          {
+            document: source,
+            parsed: await engine.artifact('pages.json'),
+            pdf_page: 1,
+            quote: 'fabricated passage',
+            relation: 'support'
+          }
+        ]
+      }
+    ]
+  });
+  assert.equal(result.findings[0].location_check, 'failed');
+  assert.equal(result.human_verified, false);
 });
-test('preview serves inline video and byte ranges',async t=>{
- const root=await toolkitFixture(t);await fs.writeFile(path.join(root,'test.mp4'),'0123456789');const {server,url}=await previewVideo(root,'test.mp4');t.after(()=>server.close());const res=await fetch(url+'/video',{headers:{Range:'bytes=2-5'}});assert.equal(res.status,206);assert.equal(await res.text(),'2345');assert.equal(res.headers.get('content-type'),'video/mp4');assert.equal((await fetch(url+'/video')).headers.get('content-disposition'),null);
+test('preview serves inline video and byte ranges', async (t) => {
+  const root = await toolkitFixture(t);
+  await fs.writeFile(path.join(root, 'test.mp4'), '0123456789');
+  const { server, url } = await previewVideo(root, 'test.mp4');
+  t.after(() => server.close());
+  const res = await fetch(url + '/video', { headers: { Range: 'bytes=2-5' } });
+  assert.equal(res.status, 206);
+  assert.equal(await res.text(), '2345');
+  assert.equal(res.headers.get('content-type'), 'video/mp4');
+  assert.equal((await fetch(url + '/video')).headers.get('content-disposition'), null);
 });
-test('download blocks local and reserved address ranges',()=>{for(const ip of ['127.0.0.1','10.1.1.1','192.168.1.1','169.254.169.254','100.64.0.1','0.0.0.0'])assert.equal(publicIPv4(ip),false);assert.equal(publicIPv4('8.8.8.8'),true);});
-test('provider failure preserves metadata and OA provenance',async t=>{
- const root=await toolkitFixture(t);const result=await searchLiterature(root,'workspace/test','synthetic',{fetchImpl:async url=>{if(url.includes('crossref'))throw new Error('offline');return {ok:true,json:async()=>({results:[{display_name:'Synthetic paper',publication_year:2030,locations:[{is_oa:true,pdf_url:'https://example.org/paper.pdf',license:'cc-by',version:'publishedVersion'}]}]})};}});assert.equal(result.total,1);assert.equal(result.items[0].oa_locations[0].license,'cc-by');const manifest=JSON.parse(await fs.readFile(path.join(root,result.manifest_path)));assert.equal(manifest.searches[0].failures.length,1);
+test('download blocks local and reserved address ranges', () => {
+  for (const ip of ['127.0.0.1', '10.1.1.1', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0'])
+    assert.equal(publicIPv4(ip), false);
+  assert.equal(publicIPv4('8.8.8.8'), true);
+});
+test('provider failure preserves metadata and OA provenance', async (t) => {
+  const root = await toolkitFixture(t);
+  const result = await searchLiterature(root, 'workspace/test', 'synthetic', {
+    fetchImpl: async (url) => {
+      if (url.includes('crossref')) throw new Error('offline');
+      return {
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              display_name: 'Synthetic paper',
+              publication_year: 2030,
+              locations: [
+                { is_oa: true, pdf_url: 'https://example.org/paper.pdf', license: 'cc-by', version: 'publishedVersion' }
+              ]
+            }
+          ]
+        })
+      };
+    }
+  });
+  assert.equal(result.total, 1);
+  assert.equal(result.items[0].oa_locations[0].license, 'cc-by');
+  const manifest = JSON.parse(await fs.readFile(path.join(root, result.manifest_path)));
+  assert.equal(manifest.searches[0].failures.length, 1);
 });
 
-import {createResearchProject} from '../src/wizard.mjs';
+import { createResearchProject } from '../src/wizard.mjs';
 
-for(const [profile,method]of [['apa7','qualitative autoethnography'],['jqi','qualitative interview'],['generic','quantitative survey']])test(`synthetic ${profile} creates plan, DOCX, quality report and blueprint without JSON editing by researcher`,async t=>{
- const root=await toolkitFixture(t);await createResearchProject(root,{title:'Synthetic '+profile,idea:'Synthetic research only',profile,entry_mode:'direct_plan',method,deadline:null,institution_guidance:'Synthetic example',sensitive_information:false});
- const engine=new Engine(root),state=await engine.status();await authorizeRun(root,{workflow_id:state.workflow_id,provider:'claude_cli',inputs:state.tasks[0].inputs,queries:[]},confirmation);
- const content='# Synthetic plan\n\n## 연구문제\nWhat changes?\n\n## 자료\nSynthetic data only\n\n## 분석\nCompare patterns\n\n## 윤리\nNo real participants\n\n## 한계\nNot an actual study';
- await runWorkflow(root,{worker:async()=>JSON.stringify({structured_output:{status:'completed',handoff_state:'none',reason:'Synthetic generation, not verification',files:[{name:'plan.md',kind:'plan',content},{name:'quality.md',kind:'quality_review',content:'Human review pending'},{name:'handoff.md',kind:'literature_handoff',content:'Evidence remains unverified'}]}})});
- const after=await engine.status();assert.equal(after.current_stage,'plan_use_verification');const scope=JSON.parse(await fs.readFile(path.join(root,'.research-work/run-scope.json')));assert.ok(scope.last_blueprint);await fs.access(path.join(root,state.project_dir,'document-manifest.json'));await fs.access(path.join(root,state.project_dir,'quality-report.json'));
-});
+for (const [profile, method] of [
+  ['apa7', 'qualitative autoethnography'],
+  ['jqi', 'qualitative interview'],
+  ['generic', 'quantitative survey']
+])
+  test(`synthetic ${profile} creates plan, DOCX, quality report and blueprint without JSON editing by researcher`, async (t) => {
+    const root = await toolkitFixture(t);
+    await createResearchProject(root, {
+      title: 'Synthetic ' + profile,
+      idea: 'Synthetic research only',
+      profile,
+      entry_mode: 'direct_plan',
+      method,
+      deadline: null,
+      institution_guidance: 'Synthetic example',
+      sensitive_information: false
+    });
+    const engine = new Engine(root),
+      state = await engine.status();
+    await authorizeRun(
+      root,
+      { workflow_id: state.workflow_id, provider: 'claude_cli', inputs: state.tasks[0].inputs, queries: [] },
+      confirmation
+    );
+    const content =
+      '# Synthetic plan\n\n## 연구문제\nWhat changes?\n\n## 자료\nSynthetic data only\n\n## 분석\nCompare patterns\n\n## 윤리\nNo real participants\n\n## 한계\nNot an actual study';
+    await runWorkflow(root, {
+      worker: async () =>
+        JSON.stringify({
+          structured_output: {
+            status: 'completed',
+            handoff_state: 'none',
+            reason: 'Synthetic generation, not verification',
+            files: [
+              { name: 'plan.md', kind: 'plan', content },
+              { name: 'quality.md', kind: 'quality_review', content: 'Human review pending' },
+              { name: 'handoff.md', kind: 'literature_handoff', content: 'Evidence remains unverified' }
+            ]
+          }
+        })
+    });
+    const after = await engine.status();
+    assert.equal(after.current_stage, 'plan_use_verification');
+    const scope = JSON.parse(await fs.readFile(path.join(root, '.research-work/run-scope.json')));
+    assert.ok(scope.last_blueprint);
+    await fs.access(path.join(root, state.project_dir, 'document-manifest.json'));
+    await fs.access(path.join(root, state.project_dir, 'quality-report.json'));
+  });
 
-import {execute} from '../src/process.mjs';
-test('native subprocess executes structured output without shell and stops on cancellation',async()=>{
- assert.equal((await execute(process.execPath,['-e','process.stdout.write(JSON.stringify({ok:true}))'])).trim(),'{"ok":true}');
- const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),100);await assert.rejects(execute(process.execPath,['-e','setInterval(()=>{},1000)'],{signal:controller.signal}),/stopped/);clearTimeout(timer);
-});
-
-import {parseKci,searchKci} from '../src/kci.mjs';
-import {parseBibliography} from '../src/bibliography.mjs';
-import {collectOpenAccess} from '../src/acquisition.mjs';
-import {makePdf} from './helpers.mjs';
-test('KCI official fields preserve metadata and reject unexpected/entity responses',async()=>{
- const xml='<result><record><journalInfo><journal-name>Synthetic Journal</journal-name><pub-year>2030</pub-year></journalInfo><articleInfo><article-title lang="original">Synthetic title</article-title><author>Author A</author><doi>10.0000/synthetic</doi></articleInfo></record></result>';
- const rows=parseKci(xml);assert.equal(rows[0].title,'Synthetic title');assert.equal(rows[0].year,2030);assert.throws(()=>parseKci('<!DOCTYPE x><result/>'),/Unsupported/);await assert.rejects(searchKci('test',{key:''}),/unavailable/);
- let checked=false;await searchKci('title',{key:'synthetic',fetchImpl:async url=>{checked=new URL(url).searchParams.get('apiCode')==='articleSearch';return {ok:true,text:async()=>xml};}});assert.ok(checked);
-});
-test('RIS and nested BibTeX imports remain metadata only and reject unsupported macros',()=>{
- const ris=parseBibliography('TY  - JOUR\nTI  - Synthetic title\nAU  - Author A\nPY  - 2030\nER  -\n','ris');assert.equal(ris[0].verification,'metadata_only');assert.equal(ris[0].authors[0],'Author A');
- const bib=parseBibliography('@article{test,title={A {nested} title},author={Alpha and Beta},year={2030}}','bib');assert.equal(bib[0].year,2030);assert.equal(bib[0].authors.length,2);assert.throws(()=>parseBibliography('@article{x,title=unknown}','bib'),/macros/);assert.throws(()=>parseBibliography('@article{x,title={title}','bib'),/Unclosed/);
-});
-test('OA acquisition verifies matching PDF and does not download successful work again',async t=>{
- const root=await toolkitFixture(t);await fs.mkdir(path.join(root,'workspace/a'),{recursive:true});const item={id:'synthetic',title:'Synthetic Study',normalized_title:'synthetic study',authors:['Synthetic Author'],year:2030,doi:null,sources:['openalex'],decision:'candidate',reason:'Synthetic fixture',verification:'metadata_only',oa_locations:[{url:'https://example.org/test.pdf',source:'openalex',license:'cc-by',version:'publishedVersion'}]};await fs.writeFile(path.join(root,'workspace/a/literature-manifest.json'),JSON.stringify({schema_version:1,project_id:'a',searches:[],items:[item],updated_at:new Date().toISOString()}));
- let calls=0;const download=async url=>{calls++;return {bytes:makePdf('Synthetic Study provides a sufficiently long synthetic passage for parser validation.'),url};};
- const first=await collectOpenAccess(root,'workspace/a',{download});assert.equal(first.items[0].identity_checked,true);const saved=JSON.parse(await fs.readFile(path.join(root,'workspace/a/acquisition-log.json')));saved.items[0].verification='unavailable';await fs.writeFile(path.join(root,'workspace/a/acquisition-log.json'),JSON.stringify(saved));const resumed=await collectOpenAccess(root,'workspace/a',{download,limit:1});assert.equal(resumed.items[0].verification,'pdf_ingested');assert.equal(calls,1);await fs.appendFile(path.join(root,resumed.items[0].parsed.path),'changed');await assert.rejects(collectOpenAccess(root,'workspace/a',{download}),/hash mismatch/);
-});
-
-import {nativeCommand,resolveShim} from '../src/execution.mjs';
-test('Windows npm .cmd shims resolve to their real executable or script',async t=>{
- const root=await toolkitFixture(t);const bin=path.join(root,'npm');await fs.mkdir(path.join(bin,'node_modules/@openai/codex/bin'),{recursive:true});await fs.mkdir(path.join(bin,'node_modules/@anthropic-ai/claude-code/bin'),{recursive:true});
- await fs.writeFile(path.join(bin,'node_modules/@openai/codex/bin/codex.js'),'');await fs.writeFile(path.join(bin,'node_modules/@anthropic-ai/claude-code/bin/claude.exe'),'');
- await fs.writeFile(path.join(bin,'codex.cmd'),String.raw`@ECHO off
-endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\node_modules\@openai\codex\bin\codex.js" %*`);
- await fs.writeFile(path.join(bin,'claude.cmd'),String.raw`@ECHO off
-"%dp0%\node_modules\@anthropic-ai\claude-code\bin\claude.exe"   %*`);
- const codex=await nativeCommand('codex_cli',{env:{},where:async()=>[path.join(bin,'codex'),path.join(bin,'codex.cmd')]});assert.equal(codex.file,process.execPath);assert.match(codex.prefix[0],/codex\.js$/);
- const claude=await nativeCommand('claude_cli',{env:{},where:async()=>[path.join(bin,'claude.cmd')]});assert.match(claude.file,/claude\.exe$/);assert.deepEqual(claude.prefix,[]);
- assert.equal(await resolveShim(path.join(bin,'missing.cmd')),null);
- const override=await nativeCommand('codex_cli',{env:{ROK_CODEX_BIN:path.join(bin,'node_modules/@openai/codex/bin/codex.js')}});assert.equal(override.file,process.execPath);
- await assert.rejects(nativeCommand('claude_cli',{env:{ROK_CLAUDE_BIN:path.join(bin,'nope.exe')}}),/not found/);
-});
-
-test('worker files must use the stage artifact kinds; a free-form kind cannot complete a plan',async t=>{
- const root=await toolkitFixture(t);await createResearchProject(root,{title:'Synthetic kinds',idea:'Synthetic research only',profile:'generic',entry_mode:'direct_plan',method:'synthetic',deadline:null,institution_guidance:'Synthetic',sensitive_information:false});
- const engine=new Engine(root),state=await engine.status();await authorizeRun(root,{workflow_id:state.workflow_id,provider:'claude_cli',inputs:state.tasks[0].inputs,queries:[]},confirmation);
- let schemaKinds;const worker=async(file,args)=>{schemaKinds=JSON.parse(args[args.indexOf('--json-schema')+1]).properties.files.items.properties.kind.enum;return JSON.stringify({structured_output:{status:'completed',handoff_state:'ready',reason:'x',files:[{name:'plan.md',kind:'markdown',content:'# Plan'}]}});};
- await assert.rejects(runWorkflow(root,{worker}),/Invalid structured worker response/);assert.ok(schemaKinds.includes('plan'));assert.ok(!schemaKinds.includes('markdown'));
- assert.equal((await engine.status()).tasks[0].status,'partial');
-});
-
-import {workerFailure} from '../src/execution.mjs';
-test('worker failures never store the echoed prompt and name usage limits plainly',()=>{
- const echoed='Worker exited 1: {"role_instructions":"secret research text","inputs":[{"text":"participant diary"}]}\nERROR: You have hit your usage limit. Try again at 12:49 PM.';
- const limit=workerFailure(echoed);assert.match(limit,/usage limit/);assert.doesNotMatch(limit,/secret|diary/);
- const other=workerFailure('Worker exited 2: {"inputs":[{"text":"participant diary"}]}\nfatal: model not available');assert.doesNotMatch(other,/diary/);assert.match(other,/model not available/);assert.ok(other.length<=400);
-});
-
-import {pinnedLookup} from '../src/acquisition.mjs';
-test('pinned DNS lookup answers both single and all-address requests',()=>{
- const lookup=pinnedLookup('93.184.216.34');let single,all;
- lookup('example.org',{},(e,address,family)=>{single=[address,family];});lookup('example.org',{all:true},(e,list)=>{all=list;});
- assert.deepEqual(single,['93.184.216.34',4]);assert.deepEqual(all,[{address:'93.184.216.34',family:4}]);
-});
-test('a worker file name without an extension is saved with one, but paths are still refused',async t=>{
- const {root,engine}=await setup(t);
- await runWorkflow(root,{worker:async()=>JSON.stringify({structured_output:{status:'completed',handoff_state:'hold',reason:'x',files:[{name:'study-record',kind:'study_record',content:'Synthetic record'}]}})});
- const task=(await engine.status()).tasks[0];assert.equal(task.status,'completed');assert.match(task.artifacts[0].path,/study-record\.md$/);
+import { execute } from '../src/process.mjs';
+test('native subprocess executes structured output without shell and stops on cancellation', async () => {
+  assert.equal(
+    (await execute(process.execPath, ['-e', 'process.stdout.write(JSON.stringify({ok:true}))'])).trim(),
+    '{"ok":true}'
+  );
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 100);
+  await assert.rejects(
+    execute(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { signal: controller.signal }),
+    /stopped/
+  );
+  clearTimeout(timer);
 });
 
-import {redactSensitiveText} from '../src/privacy.mjs';
-test('collected literature has printed identifiers masked instead of blocking the run',()=>{
- // Built at runtime so the public-history audit does not see a literal address or number in the source.
- const {text,redactions}=redactSensitiveText('Corresponding author: '+['author','example.edu'].join('@')+', tel '+['010','1234','5678'].join('-'));
- assert.equal(redactions,2);assert.doesNotMatch(text,/example\.edu|1234/);
+import { parseKci, searchKci } from '../src/kci.mjs';
+import { parseBibliography } from '../src/bibliography.mjs';
+import { collectOpenAccess } from '../src/acquisition.mjs';
+import { makePdf } from './helpers.mjs';
+test('KCI official fields preserve metadata and reject unexpected/entity responses', async () => {
+  const xml =
+    '<result><record><journalInfo><journal-name>Synthetic Journal</journal-name><pub-year>2030</pub-year></journalInfo><articleInfo><article-title lang="original">Synthetic title</article-title><author>Author A</author><doi>10.0000/synthetic</doi></articleInfo></record></result>';
+  const rows = parseKci(xml);
+  assert.equal(rows[0].title, 'Synthetic title');
+  assert.equal(rows[0].year, 2030);
+  assert.throws(() => parseKci('<!DOCTYPE x><result/>'), /Unsupported/);
+  await assert.rejects(searchKci('test', { key: '' }), /unavailable/);
+  let checked = false;
+  await searchKci('title', {
+    key: 'synthetic',
+    fetchImpl: async (url) => {
+      checked = new URL(url).searchParams.get('apiCode') === 'articleSearch';
+      return { ok: true, text: async () => xml };
+    }
+  });
+  assert.ok(checked);
+});
+test('RIS and nested BibTeX imports remain metadata only and reject unsupported macros', () => {
+  const ris = parseBibliography('TY  - JOUR\nTI  - Synthetic title\nAU  - Author A\nPY  - 2030\nER  -\n', 'ris');
+  assert.equal(ris[0].verification, 'metadata_only');
+  assert.equal(ris[0].authors[0], 'Author A');
+  const bib = parseBibliography('@article{test,title={A {nested} title},author={Alpha and Beta},year={2030}}', 'bib');
+  assert.equal(bib[0].year, 2030);
+  assert.equal(bib[0].authors.length, 2);
+  assert.throws(() => parseBibliography('@article{x,title=unknown}', 'bib'), /macros/);
+  assert.throws(() => parseBibliography('@article{x,title={title}', 'bib'), /Unclosed/);
+});
+test('OA acquisition verifies matching PDF and does not download successful work again', async (t) => {
+  const root = await toolkitFixture(t);
+  await fs.mkdir(path.join(root, 'workspace/a'), { recursive: true });
+  const item = {
+    id: 'synthetic',
+    title: 'Synthetic Study',
+    normalized_title: 'synthetic study',
+    authors: ['Synthetic Author'],
+    year: 2030,
+    doi: null,
+    sources: ['openalex'],
+    decision: 'candidate',
+    reason: 'Synthetic fixture',
+    verification: 'metadata_only',
+    oa_locations: [
+      { url: 'https://example.org/test.pdf', source: 'openalex', license: 'cc-by', version: 'publishedVersion' }
+    ]
+  };
+  await fs.writeFile(
+    path.join(root, 'workspace/a/literature-manifest.json'),
+    JSON.stringify({
+      schema_version: 1,
+      project_id: 'a',
+      searches: [],
+      items: [item],
+      updated_at: new Date().toISOString()
+    })
+  );
+  let calls = 0;
+  const download = async (url) => {
+    calls++;
+    return {
+      bytes: makePdf('Synthetic Study provides a sufficiently long synthetic passage for parser validation.'),
+      url
+    };
+  };
+  const first = await collectOpenAccess(root, 'workspace/a', { download });
+  assert.equal(first.items[0].identity_checked, true);
+  const saved = JSON.parse(await fs.readFile(path.join(root, 'workspace/a/acquisition-log.json')));
+  saved.items[0].verification = 'unavailable';
+  await fs.writeFile(path.join(root, 'workspace/a/acquisition-log.json'), JSON.stringify(saved));
+  const resumed = await collectOpenAccess(root, 'workspace/a', { download, limit: 1 });
+  assert.equal(resumed.items[0].verification, 'pdf_ingested');
+  assert.equal(calls, 1);
+  await fs.appendFile(path.join(root, resumed.items[0].parsed.path), 'changed');
+  await assert.rejects(collectOpenAccess(root, 'workspace/a', { download }), /hash mismatch/);
 });
 
-test('a CLI that reports its error on stdout still produces a readable failure',async()=>{
- await assert.rejects(execute(process.execPath,['-e','process.stdout.write(JSON.stringify({is_error:true,result:"Usage limit reached"}));process.exit(1)']),/Usage limit reached/);
- assert.match(workerFailure('Worker exited 1: {"is_error":true,"result":"Usage limit reached"}'),/usage limit/);
+import { nativeCommand, resolveShim } from '../src/execution.mjs';
+test('Windows npm .cmd shims resolve to their real executable or script', async (t) => {
+  const root = await toolkitFixture(t);
+  const bin = path.join(root, 'npm');
+  await fs.mkdir(path.join(bin, 'node_modules/@openai/codex/bin'), { recursive: true });
+  await fs.mkdir(path.join(bin, 'node_modules/@anthropic-ai/claude-code/bin'), { recursive: true });
+  await fs.writeFile(path.join(bin, 'node_modules/@openai/codex/bin/codex.js'), '');
+  await fs.writeFile(path.join(bin, 'node_modules/@anthropic-ai/claude-code/bin/claude.exe'), '');
+  await fs.writeFile(
+    path.join(bin, 'codex.cmd'),
+    String.raw`@ECHO off
+endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\node_modules\@openai\codex\bin\codex.js" %*`
+  );
+  await fs.writeFile(
+    path.join(bin, 'claude.cmd'),
+    String.raw`@ECHO off
+"%dp0%\node_modules\@anthropic-ai\claude-code\bin\claude.exe"   %*`
+  );
+  const codex = await nativeCommand('codex_cli', {
+    env: {},
+    where: async () => [path.join(bin, 'codex'), path.join(bin, 'codex.cmd')]
+  });
+  assert.equal(codex.file, process.execPath);
+  assert.match(codex.prefix[0], /codex\.js$/);
+  const claude = await nativeCommand('claude_cli', { env: {}, where: async () => [path.join(bin, 'claude.cmd')] });
+  assert.match(claude.file, /claude\.exe$/);
+  assert.deepEqual(claude.prefix, []);
+  assert.equal(await resolveShim(path.join(bin, 'missing.cmd')), null);
+  const override = await nativeCommand('codex_cli', {
+    env: { ROK_CODEX_BIN: path.join(bin, 'node_modules/@openai/codex/bin/codex.js') }
+  });
+  assert.equal(override.file, process.execPath);
+  await assert.rejects(
+    nativeCommand('claude_cli', { env: { ROK_CLAUDE_BIN: path.join(bin, 'nope.exe') } }),
+    /not found/
+  );
 });
 
-test('a KCI error response shows its reason but never the key',async()=>{
- const xml='<?xml version="1.0"?><MetaData><inputData><key>secret-key-value</key></inputData><outputData><result><resultMsg>등록되지 않은 key 입니다.</resultMsg></result></outputData></MetaData>';
- const error=await searchKci('q',{key:'secret-key-value',fetchImpl:async()=>({ok:true,text:async()=>xml})}).catch(e=>e);
- assert.match(error.message,/등록되지 않은 key/);assert.doesNotMatch(error.message,/secret-key-value/);
+test('worker files must use the stage artifact kinds; a free-form kind cannot complete a plan', async (t) => {
+  const root = await toolkitFixture(t);
+  await createResearchProject(root, {
+    title: 'Synthetic kinds',
+    idea: 'Synthetic research only',
+    profile: 'generic',
+    entry_mode: 'direct_plan',
+    method: 'synthetic',
+    deadline: null,
+    institution_guidance: 'Synthetic',
+    sensitive_information: false
+  });
+  const engine = new Engine(root),
+    state = await engine.status();
+  await authorizeRun(
+    root,
+    { workflow_id: state.workflow_id, provider: 'claude_cli', inputs: state.tasks[0].inputs, queries: [] },
+    confirmation
+  );
+  let schemaKinds;
+  const worker = async (file, args) => {
+    schemaKinds = JSON.parse(args[args.indexOf('--json-schema') + 1]).properties.files.items.properties.kind.enum;
+    return JSON.stringify({
+      structured_output: {
+        status: 'completed',
+        handoff_state: 'ready',
+        reason: 'x',
+        files: [{ name: 'plan.md', kind: 'markdown', content: '# Plan' }]
+      }
+    });
+  };
+  await assert.rejects(runWorkflow(root, { worker }), /Invalid structured worker response/);
+  assert.ok(schemaKinds.includes('plan'));
+  assert.ok(!schemaKinds.includes('markdown'));
+  assert.equal((await engine.status()).tasks[0].status, 'partial');
+});
+
+import { workerFailure } from '../src/execution.mjs';
+test('worker failures never store the echoed prompt and name usage limits plainly', () => {
+  const echoed =
+    'Worker exited 1: {"role_instructions":"secret research text","inputs":[{"text":"participant diary"}]}\nERROR: You have hit your usage limit. Try again at 12:49 PM.';
+  const limit = workerFailure(echoed);
+  assert.match(limit, /usage limit/);
+  assert.doesNotMatch(limit, /secret|diary/);
+  const other = workerFailure('Worker exited 2: {"inputs":[{"text":"participant diary"}]}\nfatal: model not available');
+  assert.doesNotMatch(other, /diary/);
+  assert.match(other, /model not available/);
+  assert.ok(other.length <= 400);
+});
+
+import { pinnedLookup } from '../src/acquisition.mjs';
+test('pinned DNS lookup answers both single and all-address requests', () => {
+  const lookup = pinnedLookup('93.184.216.34');
+  let single, all;
+  lookup('example.org', {}, (e, address, family) => {
+    single = [address, family];
+  });
+  lookup('example.org', { all: true }, (e, list) => {
+    all = list;
+  });
+  assert.deepEqual(single, ['93.184.216.34', 4]);
+  assert.deepEqual(all, [{ address: '93.184.216.34', family: 4 }]);
+});
+test('a worker file name without an extension is saved with one, but paths are still refused', async (t) => {
+  const { root, engine } = await setup(t);
+  await runWorkflow(root, {
+    worker: async () =>
+      JSON.stringify({
+        structured_output: {
+          status: 'completed',
+          handoff_state: 'hold',
+          reason: 'x',
+          files: [{ name: 'study-record', kind: 'study_record', content: 'Synthetic record' }]
+        }
+      })
+  });
+  const task = (await engine.status()).tasks[0];
+  assert.equal(task.status, 'completed');
+  assert.match(task.artifacts[0].path, /study-record\.md$/);
+});
+
+import { redactSensitiveText } from '../src/privacy.mjs';
+test('collected literature has printed identifiers masked instead of blocking the run', () => {
+  // Built at runtime so the public-history audit does not see a literal address or number in the source.
+  const { text, redactions } = redactSensitiveText(
+    'Corresponding author: ' + ['author', 'example.edu'].join('@') + ', tel ' + ['010', '1234', '5678'].join('-')
+  );
+  assert.equal(redactions, 2);
+  assert.doesNotMatch(text, /example\.edu|1234/);
+});
+
+test('a CLI that reports its error on stdout still produces a readable failure', async () => {
+  await assert.rejects(
+    execute(process.execPath, [
+      '-e',
+      'process.stdout.write(JSON.stringify({is_error:true,result:"Usage limit reached"}));process.exit(1)'
+    ]),
+    /Usage limit reached/
+  );
+  assert.match(workerFailure('Worker exited 1: {"is_error":true,"result":"Usage limit reached"}'), /usage limit/);
+});
+
+test('a KCI error response shows its reason but never the key', async () => {
+  const xml =
+    '<?xml version="1.0"?><MetaData><inputData><key>secret-key-value</key></inputData><outputData><result><resultMsg>등록되지 않은 key 입니다.</resultMsg></result></outputData></MetaData>';
+  const error = await searchKci('q', {
+    key: 'secret-key-value',
+    fetchImpl: async () => ({ ok: true, text: async () => xml })
+  }).catch((e) => e);
+  assert.match(error.message, /등록되지 않은 key/);
+  assert.doesNotMatch(error.message, /secret-key-value/);
 });

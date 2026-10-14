@@ -10,10 +10,10 @@ test('privacy audit detects local paths, thread ids, and contact details', () =>
     '010' + '-1234-' + '5678'
   ].join('\n');
   const findings = scanText(sample, 'sample');
-  assert.ok(findings.some(item => item.includes('user-home')));
-  assert.ok(findings.some(item => item.includes('thread identifier')));
-  assert.ok(findings.some(item => item.includes('email address')));
-  assert.ok(findings.some(item => item.includes('mobile number')));
+  assert.ok(findings.some((item) => item.includes('user-home')));
+  assert.ok(findings.some((item) => item.includes('thread identifier')));
+  assert.ok(findings.some((item) => item.includes('email address')));
+  assert.ok(findings.some((item) => item.includes('mobile number')));
 });
 
 test('privacy audit accepts only explicitly allowed public email addresses', () => {
@@ -38,11 +38,18 @@ test('commit identity audit rejects identities outside the release policy', () =
     { hash: 'a', role: 'committer', name: 'Project', email: projectEmail }
   ];
   assert.deepEqual(validateCommitIdentities(accepted, policy), []);
-  assert.equal(validateCommitIdentities([{ hash: 'b', role: 'committer', name: 'Personal Name', email: privateEmail }], policy).length, 1);
+  assert.equal(
+    validateCommitIdentities([{ hash: 'b', role: 'committer', name: 'Personal Name', email: privateEmail }], policy)
+      .length,
+    1
+  );
 });
 
 test('privacy audit detects representative secret formats', () => {
-  const findings = scanText('to' + 'ken=' + '"' + '1234567890abcdef' + '"\n' + '-----BEGIN ' + 'PRIVATE KEY-----', 'sample');
-  assert.ok(findings.some(item => item.includes('Assigned secret')));
-  assert.ok(findings.some(item => item.includes('Private key')));
+  const findings = scanText(
+    'to' + 'ken=' + '"' + '1234567890abcdef' + '"\n' + '-----BEGIN ' + 'PRIVATE KEY-----',
+    'sample'
+  );
+  assert.ok(findings.some((item) => item.includes('Assigned secret')));
+  assert.ok(findings.some((item) => item.includes('Private key')));
 });

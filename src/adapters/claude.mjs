@@ -6,7 +6,8 @@ export async function claudeDispatch(root, task, agentConfig = {}) {
   const relativeInbox = agentConfig.inbox || '.research-work/claude';
   const inbox = path.resolve(root, relativeInbox);
   const relative = path.relative(root, inbox);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('Claude inbox must stay inside the project root');
+  if (relative.startsWith('..') || path.isAbsolute(relative))
+    throw new Error('Claude inbox must stay inside the project root');
   await fs.mkdir(inbox, { recursive: true });
   const target = path.join(inbox, `${task.id}.request.json`);
   const payload = {

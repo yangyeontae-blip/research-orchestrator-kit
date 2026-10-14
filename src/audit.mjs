@@ -20,18 +20,21 @@ function git(root, args, { binary = false } = {}) {
   return result.stdout;
 }
 
-const normalize = value => value.split(path.sep).join('/');
-const unique = values => [...new Set(values)];
+const normalize = (value) => value.split(path.sep).join('/');
+const unique = (values) => [...new Set(values)];
 
 export function scanText(text, label, options = {}) {
-  const allowedEmails = new Set((options.allowedEmails || []).map(value => value.toLowerCase()));
-  const allowedIdentifiers = new Set((options.allowedIdentifiers || []).map(value => value.toLowerCase()));
+  const allowedEmails = new Set((options.allowedEmails || []).map((value) => value.toLowerCase()));
+  const allowedIdentifiers = new Set((options.allowedIdentifiers || []).map((value) => value.toLowerCase()));
   const findings = [];
   const checks = [
     ['Windows user-home path', new RegExp('(?:[A-Z]:' + '\\\\' + 'Users' + '\\\\' + '|[A-Z]:/Users/)', 'i')],
     ['POSIX user-home path', new RegExp('(?:/' + 'Users/|/' + 'home/)[^/\\s]+/', 'i')],
     ['Codex thread identifier', new RegExp('\\b01[0-9a-z]{6}-[0-9a-z-]{20,}\\b', 'i')],
-    ['UUID-like identifier', new RegExp('\\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\b', 'i')],
+    [
+      'UUID-like identifier',
+      new RegExp('\\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\b', 'i')
+    ],
     ['Korean mobile number', new RegExp('(?<!\\d)01[016789][ -]?\\d{3,4}[ -]?\\d{4}(?!\\d)')],
     ['GitHub personal access token', new RegExp('(?:ghp_|github_pat_)[A-Za-z0-9_]{20,}')],
     ['AWS access key', new RegExp('AKIA[0-9A-Z]{16}')],
@@ -41,7 +44,7 @@ export function scanText(text, label, options = {}) {
   for (const [kind, pattern] of checks) {
     if (kind === 'UUID-like identifier') {
       const matches = text.match(new RegExp(pattern.source, 'ig')) || [];
-      if (matches.some(value => !allowedIdentifiers.has(value.toLowerCase()))) findings.push(`${label}: ${kind}`);
+      if (matches.some((value) => !allowedIdentifiers.has(value.toLowerCase()))) findings.push(`${label}: ${kind}`);
     } else if (pattern.test(text)) {
       findings.push(`${label}: ${kind}`);
     }
@@ -54,10 +57,10 @@ export function scanText(text, label, options = {}) {
 }
 
 export function validateCommitIdentities(commits, policy) {
-  const allowed = new Set((policy.allowed_commit_identities || []).map(item => `${item.name}\u0000${item.email}`));
+  const allowed = new Set((policy.allowed_commit_identities || []).map((item) => `${item.name}\u0000${item.email}`));
   return commits
-    .filter(item => !allowed.has(`${item.name}\u0000${item.email}`))
-    .map(item => `${item.hash}: ${item.role || 'commit'} identity is not allowlisted (${item.name} <${item.email}>)`);
+    .filter((item) => !allowed.has(`${item.name}\u0000${item.email}`))
+    .map((item) => `${item.hash}: ${item.role || 'commit'} identity is not allowlisted (${item.name} <${item.email}>)`);
 }
 
 function inspectBytes(bytes, label, options, filePolicy = null) {
@@ -102,21 +105,29 @@ function auditHistory(root, policy, options) {
     if (separator < 0) continue;
     const oid = row.slice(0, separator);
     const name = row.slice(separator + 1);
-    if (forbiddenExtensions.has(path.extname(name).toLowerCase())) findings.push(`history:${normalize(name)}: forbidden source-document extension`);
+    if (forbiddenExtensions.has(path.extname(name).toLowerCase()))
+      findings.push(`history:${normalize(name)}: forbidden source-document extension`);
     if (visited.has(oid)) continue;
     visited.add(oid);
     if (git(root, ['cat-file', '-t', oid]).trim() !== 'blob') continue;
     blobs += 1;
     const bytes = git(root, ['cat-file', '-p', oid], { binary: true });
-    findings.push(...inspectBytes(bytes, `history:${normalize(name)}@${oid.slice(0, 12)}`, options, options.allowedBinaries?.get(normalize(name)) || null));
+    findings.push(
+      ...inspectBytes(
+        bytes,
+        `history:${normalize(name)}@${oid.slice(0, 12)}`,
+        options,
+        options.allowedBinaries?.get(normalize(name)) || null
+      )
+    );
   }
 
   const log = git(root, ['log', '--all', '--format=%H%x09%an%x09%ae%x09%cn%x09%ce']).split(/\r?\n/).filter(Boolean);
-  const commits = log.map(row => {
+  const commits = log.map((row) => {
     const [hash, authorName, authorEmail, committerName, committerEmail] = row.split('\t');
     return { hash, authorName, authorEmail, committerName, committerEmail };
   });
-  const identities = commits.flatMap(item => [
+  const identities = commits.flatMap((item) => [
     { hash: item.hash, role: 'author', name: item.authorName, email: item.authorEmail },
     { hash: item.hash, role: 'committer', name: item.committerName, email: item.committerEmail }
   ]);
@@ -134,7 +145,7 @@ export async function auditRepository(root) {
   const options = {
     allowedEmails: policy.allowed_content_emails || [],
     allowedIdentifiers: policy.allowed_content_identifiers || [],
-    allowedBinaries: new Map((policy.allowed_binary_files || []).map(item => [normalize(item.path), item]))
+    allowedBinaries: new Map((policy.allowed_binary_files || []).map((item) => [normalize(item.path), item]))
   };
   const tree = await auditPublishableTree(resolved, options);
   const history = auditHistory(resolved, policy, options);

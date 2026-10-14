@@ -14,7 +14,9 @@ export class SchemaRegistry {
 
   async validator(name) {
     if (this.cache.has(name)) return this.cache.get(name);
-    const schema = JSON.parse(await fs.readFile(await toolkitPath(this.root, 'schemas', `${name}.schema.json`), 'utf8'));
+    const schema = JSON.parse(
+      await fs.readFile(await toolkitPath(this.root, 'schemas', `${name}.schema.json`), 'utf8')
+    );
     const validate = this.ajv.compile(schema);
     this.cache.set(name, validate);
     return validate;
@@ -23,10 +25,9 @@ export class SchemaRegistry {
   async assert(name, value) {
     const validate = await this.validator(name);
     if (!validate(value)) {
-      const detail = validate.errors.map(error => `${error.instancePath || '/'} ${error.message}`).join('; ');
+      const detail = validate.errors.map((error) => `${error.instancePath || '/'} ${error.message}`).join('; ');
       throw new Error(`${name} schema validation failed: ${detail}`);
     }
     return value;
   }
 }
-

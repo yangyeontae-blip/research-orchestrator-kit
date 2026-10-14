@@ -21,7 +21,7 @@ test('APA 7 profile separates official style rules from toolkit proposal structu
   assert.equal(profile.legal_scope.affiliated_with_apa, false);
   assert.match(profile.scope.proposal_structure, /does not prescribe one universal/i);
   assert.match(profile.scope.precedence, /override/i);
-  assert.ok(profile.official_sources.every(source => /^https:\/\/apastyle\.apa\.org\//.test(source.url)));
+  assert.ok(profile.official_sources.every((source) => /^https:\/\/apastyle\.apa\.org\//.test(source.url)));
   assert.ok(profile.toolkit_proposal_requirements.required_sections.length >= 5);
 });
 

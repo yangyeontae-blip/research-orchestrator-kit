@@ -33,17 +33,26 @@ async function loadPdfJs() {
 }
 
 function tokenSimilarity(left, right) {
-  const a = new Set(normalizeTitle(left).split(' ').filter(token => token.length > 2));
-  const b = new Set(normalizeTitle(right).split(' ').filter(token => token.length > 2));
+  const a = new Set(
+    normalizeTitle(left)
+      .split(' ')
+      .filter((token) => token.length > 2)
+  );
+  const b = new Set(
+    normalizeTitle(right)
+      .split(' ')
+      .filter((token) => token.length > 2)
+  );
   if (!a.size || !b.size) return 0;
-  const overlap = [...a].filter(token => b.has(token)).length;
+  const overlap = [...a].filter((token) => b.has(token)).length;
   return overlap / Math.min(a.size, b.size);
 }
 
 export async function parsePdfFile(pdfPath, outputDir, options = {}) {
   const { getDocument } = await loadPdfJs();
   const bytes = await fs.readFile(pdfPath);
-  if (bytes.length < 5 || bytes.subarray(0, 5).toString('ascii') !== '%PDF-') throw new Error('File is not a PDF (missing %PDF- signature)');
+  if (bytes.length < 5 || bytes.subarray(0, 5).toString('ascii') !== '%PDF-')
+    throw new Error('File is not a PDF (missing %PDF- signature)');
   const sha256 = sha256Bytes(bytes);
   const targetDir = path.join(outputDir, sha256);
   const jsonPath = path.join(targetDir, 'pages.json');
@@ -60,9 +69,19 @@ export async function parsePdfFile(pdfPath, outputDir, options = {}) {
   for (let number = pages.length + 1; number <= document.numPages; number += 1) {
     const page = await document.getPage(number);
     const content = await page.getTextContent();
-    const text = content.items.map(item => item.str || '').join(' ').replace(/\s+/g, ' ').trim();
+    const text = content.items
+      .map((item) => item.str || '')
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     pages.push({ pdf_page: number, printed_page: null, text });
-    await writeJson(jsonPath, { schema_version: 1, sha256, page_count: document.numPages, complete: number === document.numPages, pages });
+    await writeJson(jsonPath, {
+      schema_version: 1,
+      sha256,
+      page_count: document.numPages,
+      complete: number === document.numPages,
+      pages
+    });
   }
   await document.cleanup?.();
   await loadingTask.destroy();
@@ -75,13 +94,17 @@ export async function parsePdfFile(pdfPath, outputDir, options = {}) {
     `- Status: ${needsOcr ? 'needs_ocr' : 'parsed'}`,
     `- Page labels: PDF page numbers only unless a human verifies printed pages.`,
     '',
-    ...pages.flatMap(page => [`## PDF ${page.pdf_page}쪽`, '', page.text || '[텍스트 없음]', ''])
+    ...pages.flatMap((page) => [`## PDF ${page.pdf_page}쪽`, '', page.text || '[텍스트 없음]', ''])
   ].join('\n');
   await atomicWrite(mdPath, Buffer.from(markdown, 'utf8'));
   return {
-    sha256, page_count: document.numPages, pages, needs_ocr: needsOcr,
+    sha256,
+    page_count: document.numPages,
+    pages,
+    needs_ocr: needsOcr,
     metadata: { title: metadata.info?.Title || null, author: metadata.info?.Author || null },
-    json_path: jsonPath, markdown_path: mdPath
+    json_path: jsonPath,
+    markdown_path: mdPath
   };
 }
 
@@ -90,20 +113,34 @@ export async function ingestLiteraturePdf(root, projectDir, pdfPath, options = {
   const manifestPath = path.join(project, 'literature-manifest.json');
   const manifest = await readJson(manifestPath);
   const parsed = await parsePdfFile(path.resolve(pdfPath), path.join(project, 'parsed'), options);
-  let item = options.id ? manifest.items.find(entry => entry.id === options.id) : null;
+  let item = options.id ? manifest.items.find((entry) => entry.id === options.id) : null;
   const inferredTitle = parsed.metadata.title || path.basename(pdfPath, path.extname(pdfPath));
-  if (!item) item = manifest.items.find(entry => tokenSimilarity(entry.title, inferredTitle) >= 0.65);
+  if (!item) item = manifest.items.find((entry) => tokenSimilarity(entry.title, inferredTitle) >= 0.65);
   if (!item) {
-    const userItem = deduplicateLiterature([{
-      title: inferredTitle, normalized_title: normalizeTitle(inferredTitle), authors: parsed.metadata.author ? [parsed.metadata.author] : [],
-      year: null, venue: null, url: null, doi: null, sources: ['user'], decision: 'candidate',
-      reason: 'User-owned PDF ingested locally.', verification: 'metadata_only'
-    }])[0];
+    const userItem = deduplicateLiterature([
+      {
+        title: inferredTitle,
+        normalized_title: normalizeTitle(inferredTitle),
+        authors: parsed.metadata.author ? [parsed.metadata.author] : [],
+        year: null,
+        venue: null,
+        url: null,
+        doi: null,
+        sources: ['user'],
+        decision: 'candidate',
+        reason: 'User-owned PDF ingested locally.',
+        verification: 'metadata_only'
+      }
+    ])[0];
     manifest.items.push(userItem);
     item = userItem;
   }
   const similarity = tokenSimilarity(item.title, inferredTitle);
-  item.verification = parsed.needs_ocr ? 'needs_ocr' : (parsed.metadata.title && similarity < 0.35 ? 'metadata_mismatch' : 'pdf_ingested');
+  item.verification = parsed.needs_ocr
+    ? 'needs_ocr'
+    : parsed.metadata.title && similarity < 0.35
+      ? 'metadata_mismatch'
+      : 'pdf_ingested';
   item.pdf = {
     sha256: parsed.sha256,
     file_name: path.basename(pdfPath),
@@ -117,7 +154,11 @@ export async function ingestLiteraturePdf(root, projectDir, pdfPath, options = {
   await new SchemaRegistry(root).assert('literature-manifest', manifest);
   await writeJson(manifestPath, manifest);
   return {
-    item_id: item.id, verification: item.verification, needs_ocr: parsed.needs_ocr,
-    page_count: parsed.page_count, parsed_path: item.pdf.parsed_path, sha256: parsed.sha256
+    item_id: item.id,
+    verification: item.verification,
+    needs_ocr: parsed.needs_ocr,
+    page_count: parsed.page_count,
+    parsed_path: item.pdf.parsed_path,
+    sha256: parsed.sha256
   };
 }

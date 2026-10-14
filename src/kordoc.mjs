@@ -14,10 +14,18 @@ async function loadKordoc() {
 }
 
 function tokenSimilarity(left, right) {
-  const a = new Set(normalizeTitle(left).split(' ').filter(token => token.length > 2));
-  const b = new Set(normalizeTitle(right).split(' ').filter(token => token.length > 2));
+  const a = new Set(
+    normalizeTitle(left)
+      .split(' ')
+      .filter((token) => token.length > 2)
+  );
+  const b = new Set(
+    normalizeTitle(right)
+      .split(' ')
+      .filter((token) => token.length > 2)
+  );
   if (!a.size || !b.size) return 0;
-  return [...a].filter(token => b.has(token)).length / Math.min(a.size, b.size);
+  return [...a].filter((token) => b.has(token)).length / Math.min(a.size, b.size);
 }
 
 export async function parseKoreanOfficeFile(filePath, outputDir, options = {}) {
@@ -31,13 +39,22 @@ export async function parseKoreanOfficeFile(filePath, outputDir, options = {}) {
   const markdownPath = path.join(targetDir, 'text.md');
   await fs.mkdir(targetDir, { recursive: true });
   const prior = options.resume === false ? null : await fs.readFile(metadataPath, 'utf8').then(JSON.parse, () => null);
-  if (prior?.sha256 === sha256 && prior?.markdown_path && await fs.access(markdownPath).then(() => true, () => false)) {
+  if (
+    prior?.sha256 === sha256 &&
+    prior?.markdown_path &&
+    (await fs.access(markdownPath).then(
+      () => true,
+      () => false
+    ))
+  ) {
     return { ...prior, markdown_path: markdownPath, metadata_path: metadataPath };
   }
   const { parse } = await loadKordoc();
   const result = await (options.parseImpl || parse)(absolutePath);
   if (!result?.success || typeof result.markdown !== 'string') {
-    throw new Error(`Kordoc could not parse ${path.basename(absolutePath)}: ${result?.error?.message || result?.error || 'unknown parse failure'}`);
+    throw new Error(
+      `Kordoc could not parse ${path.basename(absolutePath)}: ${result?.error?.message || result?.error || 'unknown parse failure'}`
+    );
   }
   const metadata = {
     schema_version: 1,
@@ -73,15 +90,25 @@ export async function ingestLiteratureKoreanOffice(root, projectDir, documentPat
   const manifest = await readJson(manifestPath);
   const absoluteDocument = path.resolve(documentPath);
   const parsed = await parseKoreanOfficeFile(absoluteDocument, path.join(project, 'parsed'), options);
-  let item = options.id ? manifest.items.find(entry => entry.id === options.id) : null;
+  let item = options.id ? manifest.items.find((entry) => entry.id === options.id) : null;
   const inferredTitle = parsed.title || path.basename(absoluteDocument, path.extname(absoluteDocument));
-  if (!item) item = manifest.items.find(entry => tokenSimilarity(entry.title, inferredTitle) >= 0.65);
+  if (!item) item = manifest.items.find((entry) => tokenSimilarity(entry.title, inferredTitle) >= 0.65);
   if (!item) {
-    const userItem = deduplicateLiterature([{
-      title: inferredTitle, normalized_title: normalizeTitle(inferredTitle), authors: parsed.author ? [String(parsed.author)] : [],
-      year: null, venue: null, url: null, doi: null, sources: ['user'], decision: 'candidate',
-      reason: `User-owned ${parsed.format.toUpperCase()} ingested locally.`, verification: 'metadata_only'
-    }])[0];
+    const userItem = deduplicateLiterature([
+      {
+        title: inferredTitle,
+        normalized_title: normalizeTitle(inferredTitle),
+        authors: parsed.author ? [String(parsed.author)] : [],
+        year: null,
+        venue: null,
+        url: null,
+        doi: null,
+        sources: ['user'],
+        decision: 'candidate',
+        reason: `User-owned ${parsed.format.toUpperCase()} ingested locally.`,
+        verification: 'metadata_only'
+      }
+    ])[0];
     manifest.items.push(userItem);
     item = userItem;
   }
@@ -100,7 +127,13 @@ export async function ingestLiteratureKoreanOffice(root, projectDir, documentPat
   manifest.updated_at = isoNow();
   await new SchemaRegistry(root).assert('literature-manifest', manifest);
   await writeJson(manifestPath, manifest);
-  return { item_id: item.id, verification: item.verification, format: parsed.format, parsed_path: item.document.parsed_path, sha256: parsed.sha256 };
+  return {
+    item_id: item.id,
+    verification: item.verification,
+    format: parsed.format,
+    parsed_path: item.document.parsed_path,
+    sha256: parsed.sha256
+  };
 }
 
 export async function markdownToHwpx(markdown, options = {}) {

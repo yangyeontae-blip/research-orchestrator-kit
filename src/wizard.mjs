@@ -15,13 +15,16 @@ const choices = {
 function normalizeAnswers(value) {
   const answers = { ...value };
   if (!choices.profile.includes(answers.profile)) throw new Error('profile must be apa7, jqi, or generic');
-  if (!choices.entry_mode.includes(answers.entry_mode)) throw new Error('entry_mode must be study_then_plan or direct_plan');
-  answers.apa_paper_type = answers.profile === 'apa7' ? (answers.apa_paper_type || 'student') : 'not_applicable';
+  if (!choices.entry_mode.includes(answers.entry_mode))
+    throw new Error('entry_mode must be study_then_plan or direct_plan');
+  answers.apa_paper_type = answers.profile === 'apa7' ? answers.apa_paper_type || 'student' : 'not_applicable';
   if (!choices.apa_paper_type.includes(answers.apa_paper_type)) throw new Error('Invalid APA paper type');
-  if (!answers.title?.trim() || !answers.idea?.trim() || !answers.method?.trim()) throw new Error('title, idea, and method are required');
+  if (!answers.title?.trim() || !answers.idea?.trim() || !answers.method?.trim())
+    throw new Error('title, idea, and method are required');
   answers.deadline = answers.deadline?.trim() || null;
   answers.institution_guidance = answers.institution_guidance?.trim() || '';
-  answers.sensitive_information = answers.sensitive_information === true || /^(y|yes|예)$/i.test(String(answers.sensitive_information));
+  answers.sensitive_information =
+    answers.sensitive_information === true || /^(y|yes|예)$/i.test(String(answers.sensitive_information));
   return answers;
 }
 
@@ -29,7 +32,8 @@ export async function promptResearchBrief(options = {}) {
   const rl = options.readline || createInterface({ input, output });
   const own = !options.readline;
   try {
-    const ask = async (question, fallback = '') => (await rl.question(`${question}${fallback ? ` [${fallback}]` : ''}: `)).trim() || fallback;
+    const ask = async (question, fallback = '') =>
+      (await rl.question(`${question}${fallback ? ` [${fallback}]` : ''}: `)).trim() || fallback;
     const profile = await ask('형식(apa7/jqi/generic)', 'generic');
     return normalizeAnswers({
       title: await ask('연구 제목 또는 짧은 이름'),
@@ -40,7 +44,8 @@ export async function promptResearchBrief(options = {}) {
       deadline: await ask('마감일(YYYY-MM-DD, 없으면 빈칸)'),
       institution_guidance: await ask('제출기관 또는 지도교수 지침(없으면 빈칸)'),
       sensitive_information: await ask('민감정보가 포함됩니까?(yes/no)', 'no'),
-      apa_paper_type: profile === 'apa7' ? await ask('APA 원고 유형(student/professional)', 'student') : 'not_applicable'
+      apa_paper_type:
+        profile === 'apa7' ? await ask('APA 원고 유형(student/professional)', 'student') : 'not_applicable'
     });
   } finally {
     if (own) rl.close();
@@ -52,7 +57,7 @@ export async function createResearchProject(root, rawAnswers, options = {}) {
   const projectId = options.projectId || slugify(answers.title);
   const projectDir = path.join(root, 'workspace', projectId);
   await fs.mkdir(path.join(root, 'workspace'), { recursive: true });
-  await fs.mkdir(projectDir, { recursive: false }).catch(error => {
+  await fs.mkdir(projectDir, { recursive: false }).catch((error) => {
     if (error.code === 'EEXIST') throw new Error(`Project already exists: workspace/${projectId}`);
     throw error;
   });
@@ -77,31 +82,43 @@ export async function createResearchProject(root, rawAnswers, options = {}) {
   const briefPath = path.join(projectDir, 'research-brief.json');
   await writeJson(briefPath, brief);
   await writeJson(path.join(projectDir, 'literature-manifest.json'), {
-    schema_version: 1, project_id: projectId, searches: [], items: [], updated_at: isoNow()
+    schema_version: 1,
+    project_id: projectId,
+    searches: [],
+    items: [],
+    updated_at: isoNow()
   });
   await writeJson(path.join(projectDir, 'claim-ledger.json'), {
-    schema_version: 1, project_id: projectId, plan_sha256: null, claims: [], updated_at: isoNow()
+    schema_version: 1,
+    project_id: projectId,
+    plan_sha256: null,
+    claims: [],
+    updated_at: isoNow()
   });
   const inputName = answers.entry_mode === 'study_then_plan' ? 'study-input.md' : 'research-idea.md';
   const inputPath = path.join(projectDir, inputName);
-  await fs.writeFile(inputPath, [
-    `# ${brief.title}`,
-    '',
-    '## 연구 아이디어',
-    brief.idea,
-    '',
-    '## 연구방법',
-    brief.method,
-    '',
-    '## 제출 조건',
-    brief.institution_guidance || '미정',
-    '',
-    `- 마감일: ${brief.deadline || '미정'}`,
-    `- 민감정보 포함 가능성: ${brief.sensitive_information ? '있음' : '없음'}`,
-    `- 계획서 프로필: ${brief.profile}`,
-    `- APA 원고 유형: ${brief.apa_paper_type}`,
-    ''
-  ].join('\n'), 'utf8');
+  await fs.writeFile(
+    inputPath,
+    [
+      `# ${brief.title}`,
+      '',
+      '## 연구 아이디어',
+      brief.idea,
+      '',
+      '## 연구방법',
+      brief.method,
+      '',
+      '## 제출 조건',
+      brief.institution_guidance || '미정',
+      '',
+      `- 마감일: ${brief.deadline || '미정'}`,
+      `- 민감정보 포함 가능성: ${brief.sensitive_information ? '있음' : '없음'}`,
+      `- 계획서 프로필: ${brief.profile}`,
+      `- APA 원고 유형: ${brief.apa_paper_type}`,
+      ''
+    ].join('\n'),
+    'utf8'
+  );
   const relative = path.relative(root, inputPath).split(path.sep).join('/');
   const task = await engine.enqueue({
     schema_version: 1,

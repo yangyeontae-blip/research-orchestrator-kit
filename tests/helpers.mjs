@@ -19,7 +19,7 @@ export async function toolkitFixture(t) {
 }
 
 export function makePdf(text = 'Synthetic research text', metadata = {}) {
-  const escape = value => String(value).replace(/([\\()])/g, '\\$1');
+  const escape = (value) => String(value).replace(/([\\()])/g, '\\$1');
   const stream = text == null ? '0 0 m 100 100 l S' : `BT /F1 12 Tf 72 720 Td (${escape(text)}) Tj ET`;
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -57,4 +57,3 @@ export function zipEntry(buffer, wanted) {
   }
   return null;
 }
-

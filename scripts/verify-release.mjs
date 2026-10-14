@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const testFiles = fs.readdirSync(path.join(root, 'tests'))
-  .filter(name => name.endsWith('.test.mjs'))
+const testFiles = fs
+  .readdirSync(path.join(root, 'tests'))
+  .filter((name) => name.endsWith('.test.mjs'))
   .sort()
-  .map(name => path.join(root, 'tests', name));
+  .map((name) => path.join(root, 'tests', name));
 
 const checks = [
   ['tests', ['--test', ...testFiles]],
@@ -27,4 +28,6 @@ for (const [label, args] of checks) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-process.stdout.write('\nRelease verification passed: tests, full-history privacy audit, synthetic cases, evidence fault-injection evaluation, and npm package allowlist.\n');
+process.stdout.write(
+  '\nRelease verification passed: tests, full-history privacy audit, synthetic cases, evidence fault-injection evaluation, and npm package allowlist.\n'
+);

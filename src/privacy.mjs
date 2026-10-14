@@ -14,7 +14,8 @@ export function detectSensitiveText(text) {
     ['local_user_path', /(?:[A-Z]:[\\/]Users[\\/]|\/(?:Users|home)\/)[^\s/\\]+/i],
     ['api_key_like', /(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]{16,}/]
   ];
-  for (const [type, pattern] of patterns) if (pattern.test(text)) findings.push({ type, severity: type === 'api_key_like' ? 'high' : 'review' });
+  for (const [type, pattern] of patterns)
+    if (pattern.test(text)) findings.push({ type, severity: type === 'api_key_like' ? 'high' : 'review' });
   return findings;
 }
 
@@ -29,7 +30,11 @@ export function redactSensitiveText(text) {
   ];
   let count = 0;
   let result = text;
-  for (const [pattern, mask] of patterns) result = result.replace(pattern, () => { count += 1; return mask; });
+  for (const [pattern, mask] of patterns)
+    result = result.replace(pattern, () => {
+      count += 1;
+      return mask;
+    });
   return { text: result, redactions: count };
 }
 
@@ -40,15 +45,17 @@ export async function prepareCloudFiles(root, bindings, options = {}) {
   for (const binding of bindings || []) {
     const target = path.resolve(root, binding.path);
     const extension = path.extname(target).toLowerCase();
-    if (forbiddenCloudExtensions.has(extension)) throw new Error(`Cloud transmission blocked for source-document type: ${extension}`);
-    if (!allowedTextExtensions.has(extension)) throw new Error(`Cloud transmission blocked for unsupported file type: ${extension || '(none)'}`);
+    if (forbiddenCloudExtensions.has(extension))
+      throw new Error(`Cloud transmission blocked for source-document type: ${extension}`);
+    if (!allowedTextExtensions.has(extension))
+      throw new Error(`Cloud transmission blocked for unsupported file type: ${extension || '(none)'}`);
     const bytes = await fs.readFile(target);
-    if (bytes.length > maxBytes) throw new Error(`Cloud transmission blocked: ${binding.path} exceeds ${maxBytes} bytes`);
+    if (bytes.length > maxBytes)
+      throw new Error(`Cloud transmission blocked: ${binding.path} exceeds ${maxBytes} bytes`);
     const text = bytes.toString('utf8');
-    const localFindings = detectSensitiveText(text).map(item => ({ ...item, path: binding.path }));
+    const localFindings = detectSensitiveText(text).map((item) => ({ ...item, path: binding.path }));
     findings.push(...localFindings);
     files.push({ path: binding.path, bytes: bytes.length, sha256: sha256Bytes(bytes), text });
   }
   return { files, findings, total_bytes: files.reduce((sum, file) => sum + file.bytes, 0) };
 }
-
