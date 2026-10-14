@@ -55,8 +55,9 @@ test('README links a recorded writable chat save and distinguishes earlier CLI f
   assert.match(english, /docs\/CHAT-REPRODUCTION-writable\.md/);
   assert.match(record, /저장 성공/);
   assert.match(record, /별도 Codex CLI|독립 Codex CLI/);
-  for (const savedSize of ['비공개', '19,089바이트', '21,367바이트']) {
-    assert.ok(record.includes(savedSize), `the three-topic record should include ${savedSize}`);
+  for (const savedSize of ['19,089바이트', '21,367바이트']) {
+    assert.ok(record.includes(savedSize), `the public synthetic record should include ${savedSize}`);
   }
+  assert.doesNotMatch(record, /private-topic|redacted|비공개 주제/);
   assert.doesNotMatch(readme, /저장 성공 기록은 아직 없으며/);
 });

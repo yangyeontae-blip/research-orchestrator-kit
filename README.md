@@ -40,7 +40,7 @@
 - 모델(`gpt-6.1-sol`)과 추론 강도(`high`)는 [`.codex/config.toml`](.codex/config.toml)에 권장값으로 두었습니다. 쓸 수 없는 환경이면 에이전트가 알리고 사용 가능한 모델로 계속합니다.
 - 서로 다른 주제로 실제 돌려 본 기록과 지침을 고친 과정은 [`docs/demos/`](docs/demos/)에 있습니다.
 - 실제 대화 선택을 반영한 [두 주제 초안](examples/chat-proposal/live-two-topics-2026-10-13/README.md), [교육 질적 연구 합성 예시](examples/chat-proposal/education-qualitative/README.md), [보건 양적 연구 합성 예시](examples/chat-proposal/health-quantitative/README.md), [개발 과정과 확인 기준](docs/CHAT-PROPOSAL-DEVELOPMENT.md)
-- **재현 상태:** 쓰기 가능한 Codex 데스크톱 대화에서 사용자가 직접 선택·동의한 세 주제(가상 사례 2건)의 `.md` 파일 저장을 확인했습니다([저장 기록](docs/CHAT-REPRODUCTION-writable.md)). 앞선 별도 Codex CLI 대화 두 건은 읽기 전용 정책으로 저장에 실패했습니다([실패 기록](docs/records/CHAT-REPRODUCTION-2026-10-13.md)). [연구자 자가평가표](docs/CHAT-SELF-EVALUATION.md)를 공개하며, 채팅에 초안이 보인 것만으로 파일 생성 성공이라고 판정하지 않습니다.
+- **재현 상태:** 쓰기 가능한 Codex 데스크톱 대화에서 사용자가 선택·동의한 가상 사례 2건의 `.md` 파일 저장을 확인했습니다([저장 기록](docs/CHAT-REPRODUCTION-writable.md)). 앞선 별도 Codex CLI 대화 두 건은 읽기 전용 정책으로 저장에 실패했습니다([실패 기록](docs/records/CHAT-REPRODUCTION-2026-10-13.md)). [연구자 자가평가표](docs/CHAT-SELF-EVALUATION.md)를 공개하며, 채팅에 초안이 보인 것만으로 파일 생성 성공이라고 판정하지 않습니다.
 - 초안 뒤에 문헌 수집·해시 승인·독립 검토까지 원하면 아래의 전체 실행(ROK)을 이어서 쓰면 됩니다. 이 단계는 선택입니다.
 - 저장한 초안을 심화 모드로 이어갈 때는 `rok init --profile <합의한 형식>` 후 `rok import-plan workspace/<주제요약>/proposal-draft.md --sha256 <파일 SHA-256>`을 실행합니다. 가져온 계획서는 기존 `validate`·실사용 확인·수집 승인 관문을 거치며, 가져오기 자체는 승인이 아닙니다. [명령 안내](docs/CLI-REFERENCE.md)
 
