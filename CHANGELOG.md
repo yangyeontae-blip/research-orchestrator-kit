@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.7.2 - 2026-10-14
+
+- Removed nonpublic research identifiers from the public history and kept the public save record limited to synthetic cases.
+
 ## 0.7.1 - 2026-10-14
 
 - Verified writable Codex desktop chat-path saves for two explicitly synthetic cases. The public save record contains only those cases. Updated both READMEs and the evidence-backed chat protocol test.

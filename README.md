@@ -7,7 +7,7 @@
 **연구 아이디어를 근거 있는 계획서와 설계도 영상까지. 실행은 Codex·Claude에게 맡기고, 연구자는 판단이 필요한 순간에만 결정합니다.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.7.1-5EEAD4)
+![version](https://img.shields.io/badge/version-0.7.2-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
 ![tests](https://img.shields.io/badge/tests-node%3Atest-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)

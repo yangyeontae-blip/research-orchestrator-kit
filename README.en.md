@@ -7,7 +7,7 @@
 **From a research idea to an evidence-backed proposal and a blueprint video. Codex and Claude do the work inside a scope you approve once; you are asked only when a research decision is needed.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.7.1-5EEAD4)
+![version](https://img.shields.io/badge/version-0.7.2-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
 ![tests](https://img.shields.io/badge/tests-node%3Atest-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
