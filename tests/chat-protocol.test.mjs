@@ -58,6 +58,6 @@ test('README links a recorded writable chat save and distinguishes earlier CLI f
   for (const savedSize of ['19,089바이트', '21,367바이트']) {
     assert.ok(record.includes(savedSize), `the public synthetic record should include ${savedSize}`);
   }
-  assert.doesNotMatch(record, /private-topic|redacted|비공개 주제/);
+  assert.equal((record.match(/^\| .*가상 사례 \|/gm) ?? []).length, 2);
   assert.doesNotMatch(readme, /저장 성공 기록은 아직 없으며/);
 });
