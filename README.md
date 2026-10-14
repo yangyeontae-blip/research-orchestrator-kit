@@ -48,11 +48,11 @@
 
 ## 🎬 소개 영상
 
+https://github.com/user-attachments/assets/98471c8c-6365-494d-be3d-80aadb83bc46
+
 <div align="center">
 
-<a href="https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/"><img src="docs/media/research-orchestrator-kit-v0.7-play.jpg" alt="소개 영상 재생 (122초)" width="860"></a>
-
-**▶ 이미지를 누르면 브라우저에서 바로 재생됩니다** · 122초 · 한국어 나레이션·자막 · 가상 사례 · [MP4 파일](docs/media/research-orchestrator-kit-v0.7.mp4)
+122초 · 한국어 나레이션·자막 · 가상 사례 · [큰 화면 플레이어](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [MP4 파일](docs/media/research-orchestrator-kit-v0.7.mp4)
 
 </div>
 

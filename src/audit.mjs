@@ -10,7 +10,8 @@ function git(root, args, { binary = false } = {}) {
   const result = spawnSync('git', args, {
     cwd: root,
     encoding: binary ? null : 'utf8',
-    maxBuffer: 16 * 1024 * 1024,
+    // Must hold the largest allowlisted binary (release-policy.json max_bytes is 50 MB).
+    maxBuffer: 64 * 1024 * 1024,
     windowsHide: true
   });
   if (result.status !== 0) {

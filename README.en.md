@@ -50,11 +50,11 @@ Following this repository's AGENTS.md, discuss my research idea with me, then dr
 
 ## Intro video
 
+https://github.com/user-attachments/assets/98471c8c-6365-494d-be3d-80aadb83bc46
+
 <div align="center">
 
-<a href="https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/"><img src="docs/media/research-orchestrator-kit-v0.7-play.jpg" alt="Play the intro video (122 seconds)" width="860"></a>
-
-**▶ Click the image to play it in your browser** · 122 seconds · Korean narration and captions · fictional cases · [MP4 file](docs/media/research-orchestrator-kit-v0.7.mp4)
+122 seconds · Korean narration and captions · fictional cases · [large-screen player](https://yangyeontae-blip.github.io/research-orchestrator-kit/video/player/) · [MP4 file](docs/media/research-orchestrator-kit-v0.7.mp4)
 
 </div>
 

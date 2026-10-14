@@ -3,7 +3,7 @@
 ## Unreleased
 
 - New 122-second introduction video for v0.7 (`docs/video/v0.7/`): calling `AGENTS.md` in Codex, questions with reasons, two or three directions, explicit agreement, the saved draft and its eight-point self-check, `[미확인]`/`[제안]` labels, the two public fictional cases, and the optional deep mode. Real values come from the public save record and draft; reconstructed chat screens are labeled as such on screen.
-- The video is served from the repository (`docs/media/research-orchestrator-kit-v0.7.mp4`) and plays in the browser player on GitHub Pages, which starts muted automatically and offers one-click sound. Both READMEs open the player from a clickable poster.
+- The video is served from the repository (`docs/media/research-orchestrator-kit-v0.7.mp4`) and plays in the browser player on GitHub Pages, which starts muted automatically and offers one-click sound. Both READMEs embed the video so it plays in place on GitHub, with links to the Pages player and the MP4.
 
 ## 0.7.2 - 2026-10-14
 
