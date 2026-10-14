@@ -7,7 +7,7 @@
 **From a research idea to an evidence-backed proposal and a blueprint video. Codex and Claude do the work inside a scope you approve once; you are asked only when a research decision is needed.**
 
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
-![version](https://img.shields.io/badge/version-0.7.0-5EEAD4)
+![version](https://img.shields.io/badge/version-0.7.1-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
 ![tests](https://img.shields.io/badge/tests-node%3Atest-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
@@ -42,7 +42,7 @@ Following this repository's AGENTS.md, discuss my research idea with me, then dr
 - The model (`gpt-6.1-sol`) and reasoning effort (`high`) in [`.codex/config.toml`](.codex/config.toml) are recommendations. If they are unavailable, the agent says so and continues with an available model.
 - Recorded runs on different topics, and how the instructions were refined, are in [`docs/demos/`](docs/demos/) *(Korean)*.
 - Drafts that reflect real chat choices: [two live topics](examples/chat-proposal/live-two-topics-2026-10-13/README.md), a [synthetic education qualitative example](examples/chat-proposal/education-qualitative/README.md), a [synthetic health quantitative example](examples/chat-proposal/health-quantitative/README.md), and [how this path was developed and checked](docs/CHAT-PROPOSAL-DEVELOPMENT.md) *(all Korean)*.
-- **Reproduction status:** in two separate fresh Codex CLI conversations, the questions and an answer-aware draft were confirmed, but saving the `.md` file failed because of the test host's read-only policy. The [run record](docs/records/CHAT-REPRODUCTION-2026-10-13.md) and a [researcher self-evaluation checklist](docs/CHAT-SELF-EVALUATION.md) are public *(Korean)*. A successful file save in a writable environment has not been recorded yet (see [`docs/CODEX-TODO.md`](docs/CODEX-TODO.md)), and a draft merely appearing in the chat is not treated as a successful save.
+- **Reproduction status:** writable Codex desktop conversations saved `.md` files for three topics after the user made choices and explicitly agreed (two synthetic cases; [save record](docs/CHAT-REPRODUCTION-writable.md), Korean). Two earlier, separate Codex CLI conversations could not save because the test host was read-only ([failure record](docs/records/CHAT-REPRODUCTION-2026-10-13.md)). A [researcher self-evaluation checklist](docs/CHAT-SELF-EVALUATION.md) is available *(Korean)*; a draft merely appearing in chat is not treated as a successful save.
 - If you also want literature collection, hash approvals, and independent review after the draft, continue with the full workflow (ROK) below. That part is optional.
 - To continue a saved draft in the full workflow, run `rok init --profile <agreed-profile>` and then `rok import-plan workspace/<topic>/proposal-draft.md --sha256 <file-hash>`. An imported plan still goes through `validate`, use verification, and the collection-approval gate; importing is not itself an approval. See the [command guide](docs/CLI-REFERENCE.md).
 

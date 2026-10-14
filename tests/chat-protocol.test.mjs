@@ -37,7 +37,7 @@ test('README and README.en describe the same save location and link to files tha
   assert.ok(english.includes('workspace/<topic>/proposal-draft.md'));
   assert.ok(!readme.includes('proposals/') && !english.includes('proposals/'));
   for (const target of [
-    'docs/CODEX-TODO.md',
+    'docs/CHAT-REPRODUCTION-writable.md',
     'docs/records/CHAT-REPRODUCTION-2026-10-13.md',
     'docs/CHAT-SELF-EVALUATION.md',
     '.codex/config.toml'
@@ -47,7 +47,16 @@ test('README and README.en describe the same save location and link to files tha
   }
 });
 
-test('README does not claim a successful file save that has no recorded run', async () => {
+test('README links a recorded writable chat save and distinguishes earlier CLI failures', async () => {
   const readme = await read('README.md');
-  assert.match(readme, /저장 성공 기록은 아직 없으며/);
+  const english = await read('README.en.md');
+  const record = await read('docs/CHAT-REPRODUCTION-writable.md');
+  assert.match(readme, /docs\/CHAT-REPRODUCTION-writable\.md/);
+  assert.match(english, /docs\/CHAT-REPRODUCTION-writable\.md/);
+  assert.match(record, /저장 성공/);
+  assert.match(record, /별도 Codex CLI|독립 Codex CLI/);
+  for (const savedSize of ['비공개', '19,089바이트', '21,367바이트']) {
+    assert.ok(record.includes(savedSize), `the three-topic record should include ${savedSize}`);
+  }
+  assert.doesNotMatch(readme, /저장 성공 기록은 아직 없으며/);
 });

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.7.1 - 2026-10-14
+
+- Verified writable Codex desktop chat-path saves for three user-directed topics: two synthetic cases. Published only paths, sizes, hashes, question counts, and limits; private drafts and source material remain under the ignored `workspace/` directory. Updated both READMEs and the evidence-backed chat protocol test.
+- Kept the earlier read-only Codex CLI save failures distinct from the new desktop chat saves. The native `rok run` evidence and existing release-hosted MP4 remain separately documented.
+
 - Refactor: stateless task/state helpers moved from `engine.mjs` to `src/task-state.mjs`; response schema and native CLI discovery moved from `execution.mjs` to `src/worker-cli.mjs` (still re-exported from `execution.mjs`). No behavior change.
 
 - Rewrote `README.en.md` as a full English guide that mirrors `README.md` (chat quick start, agent design, research flow, decision gates, CLI walkthrough, evidence states, verification, layout, limits, documentation map, profiles), replacing the earlier short version with duplicated intro sections.
