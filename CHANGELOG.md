@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refactor: stateless task/state helpers moved from `engine.mjs` to `src/task-state.mjs`; response schema and native CLI discovery moved from `execution.mjs` to `src/worker-cli.mjs` (still re-exported from `execution.mjs`). No behavior change.
+
 - Rewrote `README.en.md` as a full English guide that mirrors `README.md` (chat quick start, agent design, research flow, decision gates, CLI walkthrough, evidence states, verification, layout, limits, documentation map, profiles), replacing the earlier short version with duplicated intro sections.
 
 - Maintenance: state-lock logic moved from `engine.mjs` to `src/lock.mjs` and made safe against a stale-lock removal racing a fresh lock; dated run records moved to `docs/records/`; CI now checks formatting and runs a non-blocking `npm audit`.

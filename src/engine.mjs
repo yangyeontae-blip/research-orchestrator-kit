@@ -4,6 +4,16 @@ import { createHash, randomUUID } from 'node:crypto';
 import { SchemaRegistry } from './schemas.mjs';
 import { verifyArtifactUse } from './use-verification.mjs';
 import { acquireLock, releaseLock } from './lock.mjs';
+import {
+  assertRoleFree,
+  expireLeases,
+  failTask,
+  findArtifact,
+  leaseExpired,
+  mergeArtifacts,
+  publicTask,
+  sameBinding
+} from './task-state.mjs';
 import { toolkitPath, exists, readJson, slash, replaceFile } from './utils.mjs';
 
 export const ROLE_FOR_STAGE = Object.freeze({
@@ -27,9 +37,6 @@ function required(value, message) {
   if (!value) throw new Error(message);
   return value;
 }
-
-const leaseExpired = (task) =>
-  task.status === 'running' && Boolean(task.lease_expires_at) && Date.parse(task.lease_expires_at) <= Date.now();
 
 export class Engine {
   constructor(root, options = {}) {
@@ -194,7 +201,7 @@ export class Engine {
       });
       return {
         plan,
-        task: this.#publicTask(task),
+        task: publicTask(task),
         metadata_to_confirm: [
           'research idea',
           'method',
@@ -215,8 +222,8 @@ export class Engine {
     return this.#transaction(async (state) => {
       const task = state.tasks.find((item) => item.id === taskId);
       if (!task || task.status !== 'queued') throw new Error('Task is not available to claim');
-      this.#expireLeases(state, task.role);
-      this.#assertRoleFree(state, task);
+      expireLeases(state, task.role);
+      assertRoleFree(state, task);
       await this.#verifyTaskBindings(state, task);
       task.status = 'running';
       task.claimant = claimant;
@@ -248,7 +255,7 @@ export class Engine {
       }
       const incoming = [];
       for (const item of receipt.artifacts || []) incoming.push(await this.artifact(item));
-      task.artifacts = this.#mergeArtifacts(task.artifacts || [], incoming);
+      task.artifacts = mergeArtifacts(task.artifacts || [], incoming);
       task.reason = receipt.reason || null;
       task.completed_at = now();
 
@@ -271,7 +278,7 @@ export class Engine {
           at: now()
         });
         state.history.push({ event: receipt.status, task_id: task.id, stage: task.stage, at: now() });
-        return this.#publicTask(task);
+        return publicTask(task);
       }
 
       await this.#requireArtifacts(state, task);
@@ -285,10 +292,10 @@ export class Engine {
           state.branches.video = { ...state.branches.video, status: 'use_verification', task_id: task.id };
         else state.current_stage = `${task.stage}_use_verification`;
         state.history.push({ event: 'use_verification_required', task_id: task.id, stage: task.stage, at: now() });
-        return this.#publicTask(task);
+        return publicTask(task);
       }
       await this.#advance(state, task, receipt);
-      return this.#publicTask(task);
+      return publicTask(task);
     });
   }
 
@@ -298,16 +305,16 @@ export class Engine {
       if (!task || task.status !== 'completed' || !USE_VERIFICATION_STAGES.has(task.stage)) {
         throw new Error('Use verification requires a completed plan, revision, or video render task');
       }
-      if (task.completion_level === 'use_verified') return this.#publicTask(task);
+      if (task.completion_level === 'use_verified') return publicTask(task);
       if (!['generated', 'automated_verified'].includes(task.completion_level))
         throw new Error('Artifact generation must finish before use verification');
       await this.#verifyTaskBindings(state, task);
-      const expected = this.#findArtifact(task, task.stage === 'video_render' ? 'video_file' : 'plan');
+      const expected = findArtifact(task, task.stage === 'video_render' ? 'video_file' : 'plan');
       if (specification?.task_id !== task.id) throw new Error('Use verification task id does not match');
       if (specification?.kind !== (task.stage === 'video_render' ? 'video' : 'plan'))
         throw new Error('Use verification kind does not match the task');
       const actual = await this.artifact(specification.artifact);
-      this.#sameBinding(actual, expected, 'Use verification is bound to another artifact version');
+      sameBinding(actual, expected, 'Use verification is bound to another artifact version');
       const report = await verifyArtifactUse(this.root, { ...specification, stage: task.stage });
       if (
         report.status === 'use_verified' &&
@@ -324,13 +331,13 @@ export class Engine {
       task.completion_level = report.status;
       if (report.status !== 'use_verified') {
         state.history.push({ event: 'use_verification_incomplete', task_id: task.id, stage: task.stage, at: now() });
-        return this.#publicTask(task);
+        return publicTask(task);
       }
       task.completion_level = 'use_verified';
       task.use_verified_at = now();
       state.history.push({ event: 'use_verified', task_id: task.id, stage: task.stage, at: now() });
       await this.#advance(state, task, {});
-      return this.#publicTask(task);
+      return publicTask(task);
     });
   }
 
@@ -343,7 +350,7 @@ export class Engine {
       if (approval.workflow_id && approval.workflow_id !== state.workflow_id) throw new Error('Workflow id mismatch');
       if (approval.human_confirmed !== true) throw new Error('Explicit human confirmation is required');
       const plan = await this.artifact(required(approval.plan, 'Plan binding is required'), 'plan');
-      this.#sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
+      sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
 
       if (kind === 'video') {
         if (state.branches.video?.status !== 'storyboard_approval')
@@ -356,12 +363,12 @@ export class Engine {
           required(approval.source_map, 'Video source-map binding is required'),
           'video_source_map'
         );
-        this.#sameBinding(
+        sameBinding(
           storyboard,
           state.artifacts.video_storyboard,
           'Storyboard version does not match the current video branch'
         );
-        this.#sameBinding(
+        sameBinding(
           sourceMap,
           state.artifacts.video_source_map,
           'Video source-map version does not match the current video branch'
@@ -397,7 +404,7 @@ export class Engine {
           task_id: task.id,
           at: now()
         });
-        return { approval: state.approvals.video, task: this.#publicTask(task) };
+        return { approval: state.approvals.video, task: publicTask(task) };
       }
 
       if (kind === 'collection') {
@@ -437,7 +444,7 @@ export class Engine {
           state.supplemental_collection = { ...state.supplemental_collection, status: 'collecting', task_id: task.id };
         state.current_stage = 'literature';
         state.history.push({ event: 'collection_approved', plan_sha256: plan.sha256, task_id: task.id, at: now() });
-        return { approval: state.approvals.collection, task: this.#publicTask(task) };
+        return { approval: state.approvals.collection, task: publicTask(task) };
       }
 
       if (state.current_stage !== 'revision_approval') throw new Error('Workflow is not waiting for revision approval');
@@ -451,11 +458,7 @@ export class Engine {
         required(approval.report, 'Review report binding is required'),
         'review_report'
       );
-      this.#sameBinding(
-        report,
-        state.artifacts.review_report,
-        'Review report version does not match the current workflow'
-      );
+      sameBinding(report, state.artifacts.review_report, 'Review report version does not match the current workflow');
       if (declineAll) {
         // Keep the current plan and open a new collection round for it.
         state.approvals.revision = {
@@ -499,7 +502,7 @@ export class Engine {
       );
       state.current_stage = 'revise';
       state.history.push({ event: 'revision_approved', report_sha256: report.sha256, task_id: task.id, at: now() });
-      return { approval: state.approvals.revision, task: this.#publicTask(task) };
+      return { approval: state.approvals.revision, task: publicTask(task) };
     });
   }
 
@@ -515,12 +518,8 @@ export class Engine {
         required(request.report, 'Review report binding is required'),
         'review_report'
       );
-      this.#sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
-      this.#sameBinding(
-        report,
-        state.artifacts.review_report,
-        'Review report version does not match the current workflow'
-      );
+      sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
+      sameBinding(report, state.artifacts.review_report, 'Review report version does not match the current workflow');
       state.cycle += 1;
       state.approvals.collection = null;
       state.approvals.revision = null;
@@ -553,14 +552,14 @@ export class Engine {
       if (request.human_confirmed !== true || !String(request.finalized_by || '').trim())
         throw new Error('Explicit researcher confirmation and identity are required');
       const plan = await this.artifact(required(request.plan, 'Plan binding is required'), 'plan');
-      this.#sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
+      sameBinding(plan, state.artifacts.plan, 'Plan version does not match the current workflow');
       if (state.revision_lineage.plan_sha256 !== plan.sha256)
         throw new Error('Current plan is not the reviewed revision');
       const report = await this.artifact(
         required(request.report, 'Review report binding is required'),
         'review_report'
       );
-      this.#sameBinding(report, state.revision_lineage.report, 'Review report changed since the approved revision');
+      sameBinding(report, state.revision_lineage.report, 'Review report changed since the approved revision');
       const revisionTask = state.tasks.find((task) => task.id === state.revision_lineage.task_id);
       if (revisionTask?.completion_level !== 'use_verified')
         throw new Error('Revised plan requires independent use verification');
@@ -585,7 +584,7 @@ export class Engine {
         path.relative(this.root, path.join(project, 'quality-report.json')),
         'quality_report'
       );
-      this.#sameBinding(quality, expectedQuality, 'Quality report is not current');
+      sameBinding(quality, expectedQuality, 'Quality report is not current');
       const qualityData = await readJson(path.resolve(this.root, quality.path));
       await new SchemaRegistry(this.root).assert('quality-report', qualityData);
       if (qualityData.plan.sha256 !== plan.sha256 || qualityData.automated.hard_checks_passed !== true)
@@ -609,7 +608,7 @@ export class Engine {
         path.relative(this.root, path.join(project, 'document-manifest.json')),
         'document_manifest'
       );
-      this.#sameBinding(manifest, expectedManifest, 'Document manifest is not current');
+      sameBinding(manifest, expectedManifest, 'Document manifest is not current');
       const documentData = await readJson(path.resolve(this.root, manifest.path));
       await new SchemaRegistry(this.root).assert('document-manifest', documentData);
       if (
@@ -691,7 +690,7 @@ export class Engine {
         changed_plan: currentPlan.sha256 !== previous.plan.sha256,
         at: now()
       });
-      return { current_stage: state.current_stage, task: task && this.#publicTask(task) };
+      return { current_stage: state.current_stage, task: task && publicTask(task) };
     });
   }
 
@@ -703,9 +702,9 @@ export class Engine {
       state.approvals ||= { collection: null, revision: null, video: null };
       state.branches ||= { video: { status: 'idle', requested_plan_sha256: null } };
       const plan = await this.artifact(request.plan || state.artifacts.plan, 'plan');
-      this.#sameBinding(plan, state.artifacts.plan, 'Video request must use the current plan version');
+      sameBinding(plan, state.artifacts.plan, 'Video request must use the current plan version');
       const active = state.tasks.find((task) => task.branch === 'video' && ['queued', 'running'].includes(task.status));
-      if (active) return this.#publicTask(active);
+      if (active) return publicTask(active);
       state.approvals.video = null;
       const task = await this.#enqueue(
         state,
@@ -729,7 +728,7 @@ export class Engine {
       );
       state.branches.video = { status: 'storyboarding', requested_plan_sha256: plan.sha256, task_id: task.id };
       state.history.push({ event: 'video_requested', plan_sha256: plan.sha256, task_id: task.id, at: now() });
-      return this.#publicTask(task);
+      return publicTask(task);
     });
   }
 
@@ -740,8 +739,8 @@ export class Engine {
       if (!task || !(['partial', 'failed'].includes(task.status) || queuedRebind)) {
         throw new Error('Only partial or failed tasks can be retried (queued tasks only with --rebind)');
       }
-      this.#expireLeases(state, task.role);
-      if (!queuedRebind) this.#assertRoleFree(state, task);
+      expireLeases(state, task.role);
+      if (!queuedRebind) assertRoleFree(state, task);
       task.attempts ||= [];
       const attempt = {
         status: task.status,
@@ -794,7 +793,7 @@ export class Engine {
         rebind: Boolean(options.rebind),
         at: now()
       });
-      return this.#publicTask(task);
+      return publicTask(task);
     });
   }
 
@@ -802,8 +801,8 @@ export class Engine {
     return this.#transaction(async (state) => {
       const task = state.tasks.find((item) => item.id === taskId);
       if (!task || task.status !== 'running') throw new Error('Only a running task can be released');
-      this.#failTask(state, task, String(reason).trim() || 'Released by the user before completion', 'released');
-      return this.#publicTask(task);
+      failTask(state, task, String(reason).trim() || 'Released by the user before completion', 'released');
+      return publicTask(task);
     });
   }
 
@@ -817,7 +816,7 @@ export class Engine {
       const requestedBy = request.requested_by || 'human';
       let next;
       if (['plan', 'revise'].includes(task.stage)) {
-        const plan = this.#findArtifact(task, 'plan');
+        const plan = findArtifact(task, 'plan');
         const awaitingUse =
           state.current_stage === `${task.stage}_use_verification` && task.completion_level !== 'use_verified';
         const awaitingCollection =
@@ -843,7 +842,7 @@ export class Engine {
           state.approvals.revision = null;
         }
       } else if (task.stage === 'review') {
-        const report = this.#findArtifact(task, 'review_report');
+        const report = findArtifact(task, 'review_report');
         if (state.current_stage !== 'revision_approval' || state.artifacts.review_report?.sha256 !== report.sha256) {
           throw new Error('Review rework is possible only while its revision approval is pending');
         }
@@ -892,7 +891,7 @@ export class Engine {
         stage: created.stage,
         at: now()
       });
-      return this.#publicTask(created);
+      return publicTask(created);
     });
   }
 
@@ -945,7 +944,7 @@ export class Engine {
           : state.current_stage,
       cycle: state.cycle,
       tasks: state.tasks.map((task) => ({
-        ...this.#publicTask(task),
+        ...publicTask(task),
         ...(leaseExpired(task) ? { lease_expired: true } : {})
       })),
       artifacts: state.artifacts,
@@ -1053,8 +1052,8 @@ export class Engine {
 
   async #advance(state, task, receipt) {
     if (task.stage === 'video_storyboard') {
-      const storyboard = this.#findArtifact(task, 'video_storyboard');
-      const sourceMap = this.#findArtifact(task, 'video_source_map');
+      const storyboard = findArtifact(task, 'video_storyboard');
+      const sourceMap = findArtifact(task, 'video_source_map');
       state.artifacts.video_storyboard = storyboard;
       state.artifacts.video_source_map = sourceMap;
       state.approvals.video = null;
@@ -1066,8 +1065,8 @@ export class Engine {
       return;
     }
     if (task.stage === 'video_render') {
-      state.artifacts.video_file = this.#findArtifact(task, 'video_file');
-      state.artifacts.video_manifest = this.#findArtifact(task, 'video_manifest');
+      state.artifacts.video_file = findArtifact(task, 'video_file');
+      state.artifacts.video_manifest = findArtifact(task, 'video_manifest');
       state.branches.video = {
         status: 'completed',
         requested_plan_sha256: task.plan.sha256,
@@ -1096,7 +1095,7 @@ export class Engine {
       return;
     }
     if (task.stage === 'plan' || task.stage === 'revise') {
-      const plan = this.#findArtifact(task, 'plan');
+      const plan = findArtifact(task, 'plan');
       const priorVideoPlan = state.branches?.video?.requested_plan_sha256;
       state.revision_lineage =
         task.stage === 'revise'
@@ -1127,7 +1126,7 @@ export class Engine {
       return;
     }
     if (task.stage === 'literature') {
-      state.artifacts.literature = this.#mergeArtifacts(state.artifacts.literature || [], task.artifacts);
+      state.artifacts.literature = mergeArtifacts(state.artifacts.literature || [], task.artifacts);
       if (state.supplemental_collection?.task_id === task.id) state.supplemental_collection.status = 'reviewing';
       await this.#enqueue(
         state,
@@ -1144,7 +1143,7 @@ export class Engine {
       return;
     }
     if (task.stage === 'review') {
-      state.artifacts.review_report = this.#findArtifact(task, 'review_report');
+      state.artifacts.review_report = findArtifact(task, 'review_report');
       if (state.supplemental_collection?.status === 'reviewing') state.supplemental_collection.status = 'reviewed';
       state.approvals.revision = null;
       state.current_stage = 'revision_approval';
@@ -1207,12 +1206,12 @@ export class Engine {
 
   async #requireArtifacts(state, task) {
     const profile = await this.profile(state.profile);
-    for (const kind of profile.required_artifacts?.[task.stage] || []) this.#findArtifact(task, kind);
+    for (const kind of profile.required_artifacts?.[task.stage] || []) findArtifact(task, kind);
   }
 
   async #validateVideoManifest(task) {
-    const video = this.#findArtifact(task, 'video_file');
-    const manifestArtifact = this.#findArtifact(task, 'video_manifest');
+    const video = findArtifact(task, 'video_file');
+    const manifestArtifact = findArtifact(task, 'video_manifest');
     const manifest = await readJson(path.resolve(this.root, manifestArtifact.path));
     await new SchemaRegistry(this.root).assert('video-manifest', manifest);
     const storyboard = task.inputs.find((item) => item.kind === 'video_storyboard');
@@ -1228,52 +1227,6 @@ export class Engine {
       throw new Error('Video manifest file binding does not match the rendered video');
     if (!Object.values(manifest.technical_checks).every(Boolean))
       throw new Error('Video technical and licensing checks must all pass');
-  }
-
-  #assertRoleFree(state, task) {
-    const busy = state.tasks.find(
-      (item) => item.id !== task.id && item.role === task.role && item.status === 'running'
-    );
-    if (busy) throw new Error(`Role is busy: ${task.role} (task ${busy.id}; finish it or run rok release ${busy.id})`);
-  }
-
-  #expireLeases(state, role) {
-    for (const task of state.tasks) {
-      if (task.role === role && leaseExpired(task))
-        this.#failTask(state, task, `Lease expired at ${task.lease_expires_at} without a receipt`, 'lease_expired');
-    }
-  }
-
-  #failTask(state, task, reason, event) {
-    task.status = 'failed';
-    task.reason = reason;
-    task.token = null;
-    task.completed_at = now();
-    if (task.branch === 'video')
-      state.branches.video = { ...state.branches.video, status: `${task.stage}_failed`, task_id: task.id };
-    else state.current_stage = `${task.stage}_failed`;
-    state.errors.push({ task_id: task.id, stage: task.stage, status: 'failed', reason, at: now() });
-    state.history.push({ event, task_id: task.id, stage: task.stage, at: now() });
-  }
-
-  #findArtifact(task, kind) {
-    const artifact = (task.artifacts || []).find((item) => item.kind === kind);
-    if (!artifact) throw new Error(`${task.stage} completion requires artifact kind: ${kind}`);
-    return artifact;
-  }
-
-  #mergeArtifacts(current, incoming) {
-    const merged = [...current];
-    for (const item of incoming) {
-      const index = merged.findIndex((existing) => existing.kind === item.kind && existing.path === item.path);
-      if (index >= 0) merged[index] = item;
-      else merged.push(item);
-    }
-    return merged;
-  }
-
-  #sameBinding(actual, expected, message) {
-    if (!expected || actual.path !== expected.path || actual.sha256 !== expected.sha256) throw new Error(message);
   }
 
   async #verifyTaskBindings(state, task) {
@@ -1311,11 +1264,6 @@ export class Engine {
         }
       }
     }
-  }
-
-  #publicTask(task) {
-    const { token, key, ...safe } = task;
-    return safe;
   }
 
   async #load() {

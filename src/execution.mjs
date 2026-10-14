@@ -8,6 +8,8 @@ import { packageRoot } from './utils.mjs';
 import { randomUUID } from 'node:crypto';
 import { Engine } from './engine.mjs';
 import { execute } from './process.mjs';
+import { responseSchema, resolveShim, nativeCommand } from './worker-cli.mjs';
+export { responseSchema, resolveShim, nativeCommand };
 import { searchLiterature } from './literature.mjs';
 import { collectOpenAccess } from './acquisition.mjs';
 import { detectSensitiveText, redactSensitiveText } from './privacy.mjs';
@@ -33,89 +35,7 @@ export const DEFAULT_LIMITS = Object.freeze({
   api_budget: 0,
   worker_calls: 12
 });
-const schema = {
-  type: 'object',
-  properties: {
-    handoff_state: { enum: ['ready', 'hold', 'none'] },
-    status: { enum: ['completed', 'partial', 'failed'] },
-    reason: { type: 'string' },
-    files: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: { name: { type: 'string' }, kind: { type: 'string' }, content: { type: 'string' } },
-        required: ['name', 'kind', 'content'],
-        additionalProperties: false
-      }
-    }
-  },
-  required: ['status', 'reason', 'files', 'handoff_state'],
-  additionalProperties: false
-};
 const ajv = new Ajv({ strict: false });
-// Workers must label files with the exact artifact kinds the stage needs; free-form kinds made real runs fail late.
-export function responseSchema(kinds) {
-  const unique = [...new Set(kinds)];
-  return {
-    ...schema,
-    properties: {
-      ...schema.properties,
-      files: {
-        ...schema.properties.files,
-        items: {
-          ...schema.properties.files.items,
-          properties: { ...schema.properties.files.items.properties, kind: { enum: [...unique, 'supporting_note'] } }
-        }
-      }
-    }
-  };
-}
-const exists = (file) =>
-  fs.access(file).then(
-    () => true,
-    () => false
-  );
-// npm global installs on Windows are .cmd shims; spawning them needs a shell, so resolve the real target instead.
-export async function resolveShim(shim) {
-  const text = await fs.readFile(shim, 'utf8').catch(() => '');
-  for (const [, target] of text.matchAll(/"%dp0%\\([^"%]+\.(?:exe|js|cjs|mjs))"/gi)) {
-    const file = path.join(path.dirname(shim), ...target.split(/[\\/]+/));
-    if (!(await exists(file))) continue;
-    return /\.exe$/i.test(file) ? { file, prefix: [] } : { file: process.execPath, prefix: [file] };
-  }
-  return null;
-}
-export async function nativeCommand(provider, { env = process.env, where } = {}) {
-  const name = provider === 'codex_cli' ? 'codex' : 'claude';
-  const override = env[name === 'codex' ? 'ROK_CODEX_BIN' : 'ROK_CLAUDE_BIN'];
-  if (override) {
-    if (!(await exists(override))) throw new Error(`Configured ${name} executable not found`);
-    return /\.(c|m)?js$/i.test(override)
-      ? { file: process.execPath, prefix: [override] }
-      : { file: override, prefix: [] };
-  }
-  if (process.platform !== 'win32' && !where) return { file: name, prefix: [] };
-  const paths = (
-    where
-      ? await where(name)
-      : (await execute('where.exe', [name], { timeout: 10000 }).catch(() => '')).trim().split(/\r?\n/)
-  ).filter(Boolean);
-  const exe = paths.find((p) => p.toLowerCase().endsWith('.exe'));
-  if (exe) return { file: exe, prefix: [] };
-  for (const shim of paths.filter((p) => /\.cmd$/i.test(p))) {
-    const resolved = await resolveShim(shim);
-    if (resolved) return resolved;
-  }
-  if (name === 'claude') {
-    for (const shim of paths) {
-      const script = path.join(path.dirname(shim), 'node_modules/@anthropic-ai/claude-code/cli.js');
-      if (await exists(script)) return { file: process.execPath, prefix: [script] };
-    }
-  }
-  throw new Error(
-    `Native CLI executable not found: ${name}. Set ${name === 'codex' ? 'ROK_CODEX_BIN' : 'ROK_CLAUDE_BIN'} to its executable path.`
-  );
-}
 const save = (file, data) => atomicWrite(file, JSON.stringify(data, null, 2) + '\n');
 const at = (root, name) => path.join(root, '.research-work', name);
 function human(value) {
