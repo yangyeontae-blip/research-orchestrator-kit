@@ -125,7 +125,9 @@ export async function collectOpenAccess(root, project, { limit = 15, email, down
               version: x.version || null,
               source: 'unpaywall'
             });
-      } catch {}
+      } catch (e) {
+        process.stderr.write(`warning: Unpaywall lookup failed for ${item.doi}: ${e.message}\n`);
+      }
     }
     if (!locations.length) {
       if (!log.items.some((x) => x.id === item.id))

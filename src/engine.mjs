@@ -4,7 +4,7 @@ import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { SchemaRegistry } from './schemas.mjs';
 import { verifyArtifactUse } from './use-verification.mjs';
-import { toolkitPath } from './utils.mjs';
+import { toolkitPath, exists, readJson, slash, replaceFile, unlinkQuiet } from './utils.mjs';
 
 export const ROLE_FOR_STAGE = Object.freeze({
   study: 'study',
@@ -23,15 +23,8 @@ const LOCK_WAIT_MS = 10_000;
 // State transactions take milliseconds; an older lock was left behind by a crashed process.
 const STALE_LOCK_MS = 120_000;
 const DEFAULT_LEASE_MS = 72 * 60 * 60 * 1000;
-const slash = (value) => value.split(path.sep).join('/');
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const now = () => new Date().toISOString();
-const exists = (target) =>
-  fs.access(target).then(
-    () => true,
-    () => false
-  );
-const readJson = async (target) => JSON.parse((await fs.readFile(target, 'utf8')).replace(/^\uFEFF/, ''));
 
 function required(value, message) {
   if (!value) throw new Error(message);
@@ -1363,26 +1356,12 @@ export class Engine {
         const backupDir = path.join(this.workDir, 'backups');
         await fs.mkdir(backupDir, { recursive: true });
         await fs.copyFile(this.statePath, path.join(backupDir, `state.${Date.now()}.${randomUUID()}.json`));
-        try {
-          await fs.rename(temp, this.statePath);
-        } catch (error) {
-          if (!['EPERM', 'EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
-          await fs.copyFile(temp, this.statePath);
-          await fs.unlink(temp).catch(() => {});
-        }
-      } else {
-        try {
-          await fs.rename(temp, this.statePath);
-        } catch (error) {
-          if (!['EPERM', 'EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
-          await fs.copyFile(temp, this.statePath);
-          await fs.unlink(temp).catch(() => {});
-        }
       }
+      await replaceFile(temp, this.statePath);
       return result;
     } finally {
       await lock.close();
-      await fs.unlink(this.lockPath).catch(() => {});
+      await unlinkQuiet(this.lockPath);
     }
   }
 
@@ -1426,7 +1405,7 @@ export class Engine {
       owner.pid !== process.pid &&
       !processAlive(owner.pid);
     if (!deadOwner && Date.now() - stat.mtimeMs < STALE_LOCK_MS) return false;
-    await fs.unlink(this.lockPath).catch(() => {});
+    await unlinkQuiet(this.lockPath);
     return true;
   }
 }

@@ -8,7 +8,8 @@ export function execute(file, args, { cwd, input = '', signal, timeout = 300000,
       shell: false,
       detached: process.platform !== 'win32'
     });
-    let out = '',
+    const chunks = [];
+    let size = 0,
       err = '',
       settled = false;
     const terminate = () => {
@@ -47,8 +48,9 @@ export function execute(file, args, { cwd, input = '', signal, timeout = 300000,
     if (signal?.aborted) aborted();
     child.on('error', (e) => end(e));
     child.stdout.on('data', (b) => {
-      out += b;
-      if (Buffer.byteLength(out) > maxBytes) {
+      chunks.push(b);
+      size += b.length;
+      if (size > maxBytes) {
         terminate();
         end(new Error('Worker output limit'));
       }
@@ -57,9 +59,10 @@ export function execute(file, args, { cwd, input = '', signal, timeout = 300000,
       err = (err + b).slice(-2000);
     });
     // Some CLIs (Claude with --output-format json) report errors such as usage limits on stdout, not stderr.
-    child.on('close', (code) =>
-      end(code === 0 ? null : new Error(`Worker exited ${code}: ${err}${err.trim() ? '' : out.slice(-2000)}`), out)
-    );
+    child.on('close', (code) => {
+      const out = Buffer.concat(chunks).toString('utf8');
+      end(code === 0 ? null : new Error(`Worker exited ${code}: ${err}${err.trim() ? '' : out.slice(-2000)}`), out);
+    });
     child.stdin.on('error', () => {});
     child.stdin.end(input);
   });

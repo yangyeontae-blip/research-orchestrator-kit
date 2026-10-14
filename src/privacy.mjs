@@ -5,39 +5,53 @@ import { sha256Bytes } from './utils.mjs';
 const allowedTextExtensions = new Set(['.md', '.txt', '.json', '.csv', '.tsv']);
 const forbiddenCloudExtensions = new Set(['.pdf', '.doc', '.docx', '.hwp', '.hwpx']);
 
+// One table drives both detection and redaction so the two cannot drift apart.
+const SENSITIVE_PATTERNS = [
+  { type: 'email', pattern: /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, mask: '[이메일 가림]' },
+  { type: 'korean_phone', pattern: /(?<!\d)01[016789][ -]?\d{3,4}[ -]?\d{4}(?!\d)/g, mask: '[전화번호 가림]' },
+  // Hyphenated landlines only (02-123-4567, 031-123-4567); unhyphenated digit runs are too ambiguous.
+  { type: 'korean_landline', pattern: /(?<!\d)0(?:2|[3-6][1-5])-\d{3,4}-\d{4}(?!\d)/g, mask: '[전화번호 가림]' },
+  { type: 'resident_number_like', pattern: /(?<!\d)\d{6}[ -]?[1-4]\d{6}(?!\d)/g, mask: '[식별번호 가림]' },
+  { type: 'card_number_like', pattern: /(?<!\d)\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{4}(?!\d)/g, mask: '[카드번호 가림]' },
+  { type: 'local_user_path', pattern: /(?:[A-Z]:[\\/]Users[\\/]|\/(?:Users|home)\/)[^\s/\\]+/gi, mask: '[경로 가림]' },
+  { type: 'api_key_like', pattern: /(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]{16,}/g, mask: '[키 가림]', severity: 'high' },
+  {
+    type: 'api_key_like',
+    pattern:
+      /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b|\bxox[abprs]-[A-Za-z0-9-]{10,}|\bAIza[0-9A-Za-z_-]{35}\b|\bgh[ousr]_[A-Za-z0-9]{30,}/g,
+    mask: '[키 가림]',
+    severity: 'high'
+  },
+  {
+    type: 'private_key_block',
+    pattern: /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/g,
+    mask: '[키 가림]',
+    severity: 'high'
+  }
+];
+
 export function detectSensitiveText(text) {
   const findings = [];
-  const patterns = [
-    ['email', /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i],
-    ['korean_phone', /(?<!\d)01[016789][ -]?\d{3,4}[ -]?\d{4}(?!\d)/],
-    ['resident_number_like', /(?<!\d)\d{6}[ -]?[1-4]\d{6}(?!\d)/],
-    ['local_user_path', /(?:[A-Z]:[\\/]Users[\\/]|\/(?:Users|home)\/)[^\s/\\]+/i],
-    ['api_key_like', /(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]{16,}/]
-  ];
-  for (const [type, pattern] of patterns)
-    if (pattern.test(text)) findings.push({ type, severity: type === 'api_key_like' ? 'high' : 'review' });
+  for (const { type, pattern, severity } of SENSITIVE_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(text) && !findings.some((item) => item.type === type))
+      findings.push({ type, severity: severity || 'review' });
+    pattern.lastIndex = 0;
+  }
   return findings;
 }
 
 // Published papers routinely print author e-mail addresses; mask identifiers instead of refusing public literature.
 export function redactSensitiveText(text) {
-  const patterns = [
-    [/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[이메일 가림]'],
-    [/(?<!\d)01[016789][ -]?\d{3,4}[ -]?\d{4}(?!\d)/g, '[전화번호 가림]'],
-    [/(?<!\d)\d{6}[ -]?[1-4]\d{6}(?!\d)/g, '[식별번호 가림]'],
-    [/(?:[A-Z]:[\\/]Users[\\/]|\/(?:Users|home)\/)[^\s/\\]+/gi, '[경로 가림]'],
-    [/(?:sk-|ghp_|github_pat_)[A-Za-z0-9_-]{16,}/g, '[키 가림]']
-  ];
   let count = 0;
   let result = text;
-  for (const [pattern, mask] of patterns)
+  for (const { pattern, mask } of SENSITIVE_PATTERNS)
     result = result.replace(pattern, () => {
       count += 1;
       return mask;
     });
   return { text: result, redactions: count };
 }
-
 export async function prepareCloudFiles(root, bindings, options = {}) {
   const files = [];
   const findings = [];

@@ -34,13 +34,25 @@ export function inside(root, target) {
   const relative = path.relative(path.resolve(root), path.resolve(target));
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
+// Best-effort cleanup: a file that is already gone is fine, any other failure is not silently dropped.
+export const unlinkQuiet = (target) =>
+  fs.unlink(target).catch((error) => {
+    if (error.code !== 'ENOENT')
+      process.stderr.write(`warning: could not remove ${target}: ${error.code || error.message}\n`);
+  });
+// Windows can refuse rename over an existing file (EPERM/EEXIST); fall back to copy + remove.
+export async function replaceFile(temp, target) {
+  try {
+    await fs.rename(temp, target);
+  } catch (error) {
+    if (!['EPERM', 'EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
+    await fs.copyFile(temp, target);
+    await unlinkQuiet(temp);
+  }
+}
 export async function atomicWrite(target, content) {
   await fs.mkdir(path.dirname(target), { recursive: true });
   const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
   await fs.writeFile(temp, content);
-  await fs.rename(temp, target).catch(async (error) => {
-    if (!['EPERM', 'EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
-    await fs.copyFile(temp, target);
-    await fs.unlink(temp).catch(() => {});
-  });
+  await replaceFile(temp, target);
 }

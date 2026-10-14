@@ -33,9 +33,15 @@
     "eval": "node scripts/eval-evidence.mjs",
     "audit": "node scripts/audit-public.mjs",
     "verify": "node scripts/verify-release.mjs",
-    "pack:check": "node scripts/check-package.mjs"
+    "pack:check": "node scripts/check-package.mjs",
+    "format": "npx --yes prettier@3.3.3 --write \"src/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\"",
+    "format:check": "npx --yes prettier@3.3.3 --check \"src/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\""
   },
   "license": "MIT",
+  "keywords": ["research", "proposal", "orchestrator", "apa7", "evidence", "codex", "claude", "korean"],
+  "repository": { "type": "git", "url": "git+https://github.com/yangyeontae-blip/research-orchestrator-kit.git" },
+  "bugs": { "url": "https://github.com/yangyeontae-blip/research-orchestrator-kit/issues" },
+  "homepage": "https://github.com/yangyeontae-blip/research-orchestrator-kit#readme",
   "private": false,
   "dependencies": {
     "ajv": "8.20.0",

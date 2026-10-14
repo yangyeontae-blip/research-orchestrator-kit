@@ -9,7 +9,7 @@
 [![verify](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml/badge.svg)](https://github.com/yangyeontae-blip/research-orchestrator-kit/actions/workflows/verify.yml)
 ![version](https://img.shields.io/badge/version-0.7.0-5EEAD4)
 ![node](https://img.shields.io/badge/node-20%20%7C%2022-339933?logo=node.js&logoColor=white)
-![tests](https://img.shields.io/badge/tests-106%20passing-4ADE80)
+![tests](https://img.shields.io/badge/tests-node%3Atest-4ADE80)
 ![license](https://img.shields.io/badge/license-MIT-A78BFA)
 
 [먼저 해 보기](#️-먼저-해-보기-codex에서-대화로-계획서-받기) · [소개 영상](#-소개-영상) · [에이전트 설계](#-에이전트-설계-한눈에) · [무엇이 달라지나](#-무엇이-달라지나) · [연구 흐름](#-연구-흐름) · [연구자의 판단](#-연구자가-판단하는-순간) · [시작하기](#-시작하기) · [English](README.en.md)
@@ -227,7 +227,7 @@ rok rework <task-id> --feedback "..." | release <task-id> | retry <task-id> --re
 npm run verify
 ```
 
-테스트 106개, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), 인용 대조 결함 주입 평가(`npm run eval`), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
+`node:test` 전체 테스트, 합성 사례(APA 7 자문화기술지·JQI 면담·범용 양적 연구), 인용 대조 결함 주입 평가(`npm run eval`), npm 패키지 허용목록, 전체 Git 이력 개인정보 감사를 한 번에 실행합니다. GitHub Actions는 Ubuntu·Windows × Node.js 20·22에서 같은 검증을 돌립니다.
 
 기존 [실행 기록](docs/chat-execution.md#검증-수준)은 Claude Code와 실제 Crossref·OpenAlex·공개 원문으로 합성 아이디어의 탐색 수집 → 초안 → 집중 수집 → 독립 검토 → 보완본 → 최종 확정까지 두 차례 진행했다고 보고합니다. 사람의 관문은 합성 운영자 이름으로 기록했다고 명시되어 있습니다. 해당 원본 상태·이벤트 로그는 Git 추적 파일에서 확인하지 못했으므로 [근거 수준](docs/NATIVE-RUN-EVIDENCE-2026-10-14.md)을 따로 적었습니다. 이번에는 Codex CLI를 실제로 다시 실행해 계획서 파일과 SHA-256을 확인했으며, 초안 자동 검사와 사람의 확인이 남은 상태에서 멈췄습니다. KCI는 실제 서버 응답(키 없음·잘못된 키)까지 확인했고, 유효한 인증키로 결과를 받는 것은 연구자 본인의 키가 필요합니다.
 
@@ -249,7 +249,7 @@ research-orchestrator-kit/
 │  └─ cli.mjs
 ├─ profiles/   schemas/   prompts/
 ├─ examples/                # 실제 연구자료 없는 합성 사례
-├─ tests/                   # node:test 104개
+├─ tests/                   # node:test
 └─ docs/                    # 판단 기준 · 설계 · CLI · 검증 · 개인정보 · 영상 소스
 ```
 

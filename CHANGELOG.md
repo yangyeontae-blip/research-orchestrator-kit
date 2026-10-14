@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Maintenance: shared `readJson`/`exists`/`replaceFile`/`unlinkQuiet` helpers in `src/utils.mjs` replace duplicates in the engine, config, and CLI; formerly silent `catch` blocks now warn on stderr; `execute` buffers worker output as chunks (fixes multi-byte characters split across chunks); privacy detection and redaction share one pattern table with added landline, card-number, cloud-key, and private-key patterns; Prettier config and `npm run format` added and applied; README test counts no longer hard-coded; package metadata completed.
+
 - Unified the two chat-path sections in `AGENTS.md` into one protocol (steps 0-4). Added a write check before the discussion, a minimum-content table and length target for the draft, a literature plan when search is unavailable, an appendix that quotes the user's agreement verbatim, and an eight-point self-check. The draft location is now `workspace/<topic>/proposal-draft.md`; a missing configured model no longer stops the work.
 - Added `tests/chat-protocol.test.mjs` so the protocol structure and README links cannot silently regress, and `docs/CODEX-TODO.md` listing the work that needs a real Codex run (including the still-missing successful file-save record).
 - Replaced the recently added three-person chat evaluation package with a researcher self-evaluation checklist. Researchers can check file creation, evidence, method alignment, ethics, and format themselves; a self-score is optional and does not certify research quality.

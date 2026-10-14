@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline/promises';
 import { stdin, stdout, stderr } from 'node:process';
 import { Engine } from './engine.mjs';
 import { loadConfig } from './config.mjs';
+import { readJson } from './utils.mjs';
 import { codexDispatch } from './adapters/codex.mjs';
 import { claudeDispatch } from './adapters/claude.mjs';
 import { manualDispatch } from './adapters/manual.mjs';
@@ -60,8 +61,7 @@ const previousOption = takeOption('--previous', null);
 const [command, ...args] = argv;
 const leaseHours = Number((await loadConfig(root).catch(() => ({ config: {} }))).config.lease_hours);
 const engine = new Engine(root, { leaseMs: leaseHours > 0 ? leaseHours * 60 * 60 * 1000 : undefined });
-const inputJson = async (file) =>
-  JSON.parse((await fs.readFile(path.resolve(root, file), 'utf8')).replace(/^\uFEFF/, ''));
+const inputJson = (file) => readJson(path.resolve(root, file));
 
 async function dispatch(task, options = {}) {
   const { config, source } = await loadConfig(root);

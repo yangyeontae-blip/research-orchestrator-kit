@@ -210,13 +210,17 @@ const STAGE_RULES = (stage) =>
 export function parseJsonLoose(text, label = 'artifact') {
   try {
     return JSON.parse(text);
-  } catch {}
+  } catch {
+    /* not bare JSON; try a fenced or embedded object below */
+  }
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   for (const candidate of [fenced?.[1], text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)]) {
     if (!candidate) continue;
     try {
       return JSON.parse(candidate);
-    } catch {}
+    } catch {
+      /* try the next candidate */
+    }
   }
   throw new Error(`${label} must be JSON; the worker returned another format`);
 }
@@ -673,7 +677,9 @@ export async function runWorkflow(root, { resume = false, worker = execute, exec
     if (task)
       await engine
         .complete({ task_id: task.id, token: task.token, status: 'partial', artifacts: [], reason })
-        .catch(() => {});
+        .catch((e) => {
+          process.stderr.write(`warning: could not record partial result for task ${task.id}: ${e.message}\n`);
+        });
     throw new Error(reason);
   } finally {
     await lock.close();

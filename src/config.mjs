@@ -1,12 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { packageRoot } from './utils.mjs';
-
-const exists = (target) =>
-  fs.access(target).then(
-    () => true,
-    () => false
-  );
+import { packageRoot, exists, readJson } from './utils.mjs';
 
 export async function loadConfig(root) {
   const local = path.join(root, 'config.local.json');
@@ -16,7 +10,7 @@ export async function loadConfig(root) {
     : (await exists(example))
       ? example
       : path.join(packageRoot, 'config.example.json');
-  const config = JSON.parse((await fs.readFile(target, 'utf8')).replace(/^\uFEFF/, ''));
+  const config = await readJson(target);
   if (config.schema_version !== 1 || !config.agents) throw new Error('Invalid agent config');
   config.agents.video ||= { provider: 'manual' };
   return { config, source: path.relative(root, target).split(path.sep).join('/') };
