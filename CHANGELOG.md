@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rewrote `README.en.md` as a full English guide that mirrors `README.md` (chat quick start, agent design, research flow, decision gates, CLI walkthrough, evidence states, verification, layout, limits, documentation map, profiles), replacing the earlier short version with duplicated intro sections.
+
 - Maintenance: state-lock logic moved from `engine.mjs` to `src/lock.mjs` and made safe against a stale-lock removal racing a fresh lock; dated run records moved to `docs/records/`; CI now checks formatting and runs a non-blocking `npm audit`.
 
 - Maintenance: shared `readJson`/`exists`/`replaceFile`/`unlinkQuiet` helpers in `src/utils.mjs` replace duplicates in the engine, config, and CLI; formerly silent `catch` blocks now warn on stderr; `execute` buffers worker output as chunks (fixes multi-byte characters split across chunks); privacy detection and redaction share one pattern table with added landline, card-number, cloud-key, and private-key patterns; Prettier config and `npm run format` added and applied; README test counts no longer hard-coded; package metadata completed.
