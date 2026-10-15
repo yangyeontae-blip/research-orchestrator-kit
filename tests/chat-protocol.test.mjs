@@ -30,6 +30,16 @@ test('the chat path keeps its safety rules: write check, explicit agreement, no 
   assert.match(agents, /부록 1\. 합의 사항/);
 });
 
+test('the self-check has a repeat limit and never keeps invented content when the limit is hit', async () => {
+  const agents = await read('AGENTS.md');
+  const section = agents.slice(agents.indexOf('### 산출 전 자체 점검'), agents.indexOf('### 범용성 규칙'));
+  assert.match(section, /점검은 최대 3회/);
+  assert.match(section, /점검 n\/3회/);
+  assert.match(section, /점검 미통과/);
+  assert.match(section, /지어낸 내용은 상한에 걸려도 남기지 않는다/);
+  assert.match(section, /다시 1회부터 센다/);
+});
+
 test('README and README.en describe the same save location and link to files that exist', async () => {
   const readme = await read('README.md');
   const english = await read('README.en.md');

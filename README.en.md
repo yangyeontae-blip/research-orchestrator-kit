@@ -36,7 +36,7 @@ Following this repository's AGENTS.md, discuss my research idea with me, then dr
 | 1. Key conditions | Asks one or two things at a time (up to three per round): research type (field study, thesis), submission format, participants, timeline. It never picks a format for you. | The needed conditions are collected |
 | 2. Direction discussion | Offers 2-3 different research directions with trade-offs; you choose or combine them. | You choose a direction |
 | 3. Question and method agreement | Summarizes research questions, participants, data, analysis, and ethics, and checks that questions, data, and analysis line up. | Your explicit agreement |
-| 4. Proposal draft | Writes `workspace/<topic>/proposal-draft.md`. The appendix quotes your agreement in your own words and lists **unverified items**. | The eight-point self-check passes before output |
+| 4. Proposal draft | Writes `workspace/<topic>/proposal-draft.md`. The appendix quotes your agreement in your own words and lists **unverified items**. | Eight-point self-check before output, at most three passes; anything still failing is reported as not passed |
 
 - Evidence not checked against the literature is marked `[미확인: 문헌 확인 필요]` (unverified: literature check needed). The agent never invents citations or numbers; without search access it writes a search plan (keywords, databases, inclusion criteria) instead.
 - The model (`gpt-6.1-sol`) and reasoning effort (`high`) in [`.codex/config.toml`](.codex/config.toml) are recommendations. If they are unavailable, the agent says so and continues with an available model.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The chat path's pre-output self-check now has a repeat limit: at most three passes (one check plus two re-checks after fixes), with no extra questions to the user between passes. If items still fail on the third pass, invented citations, numbers, experiences, or results are removed rather than kept; other failing items are listed in a "점검 미통과" table at the top of appendix 2, and the draft is never called passed. A user-requested fix becomes a new version whose count restarts. Each item is reported as passed, passed after fix (pass n), or not passed (reason), followed by `점검 n/3회`. Covered by a new chat-protocol test.
+
 - New 122-second introduction video for v0.7 (`docs/video/v0.7/`): calling `AGENTS.md` in Codex, questions with reasons, two or three directions, explicit agreement, the saved draft and its eight-point self-check, `[미확인]`/`[제안]` labels, the two public fictional cases, and the optional deep mode. Real values come from the public save record and draft; reconstructed chat screens are labeled as such on screen.
 - The video is served from the repository (`docs/media/research-orchestrator-kit-v0.7.mp4`) and plays in the browser player on GitHub Pages, which starts muted automatically and offers one-click sound. Both READMEs embed the video so it plays in place on GitHub, with links to the Pages player and the MP4.
 
